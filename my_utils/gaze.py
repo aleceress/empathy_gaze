@@ -29,37 +29,40 @@ def dva2pixels(angles, d, w, h, x_res, y_res):
     return pixels
 
 def pixels2angles(xs, dist, w, h, resx, resy):
-	#xs: Nx2 data
-	#dist: distance from screen in meters
-	#w, h: width and height of the sceen (m)
-	#resx, resy: resoluion of the screen
+	#xs: Nx2 data (x,y coordinates of the scanpath)
+	#dist: distance from screen in meters (of the subject)
+	#w, h: width and height of the screen (m)
+	#resx, resy: resolution of the screen
 
-	screenmeters = xs / np.array([resx, resy])  #procedura standard
+	screenmeters = xs / np.array([resx, resy])  # procedura standard (getting coordinates in a rectangular cm space, instead of pixels)
 	screenmeters -= 0.5 #per avere 0,0 al centro dello schermo
-	screenmeters *= np.array([w, h])
-	angles = np.degrees(np.arctan(screenmeters / dist))
+	screenmeters *= np.array([w, h]) # bringing back the coordinate space into the size of the original image
+	angles = np.degrees(np.arctan(screenmeters / dist)) # in un triangolo rettangolo il valore di un angolo acuto è uguale alla arcotangente del rapporto tra il cateto opposto ed il cateto adiacente
 	return angles
 
 def split_events(gaze, bool_mask, check_event_quality=True):
 	bool_mask = bool_mask.astype(int)
+
+	# guess we don't want the first and last time to belong to any event	
 	if bool_mask[0] == 1:
-		bool_mask = np.insert(bool_mask, 0, 0)
+		bool_mask = np.insert(bool_mask, 0, 0) # 
 	if bool_mask[-1] == 1:
 		bool_mask = np.append(bool_mask, 0)
 
-	starts_event = np.where(np.diff(bool_mask) == 1)[0]
-	ends_event = np.where(np.diff(bool_mask) == -1)[0]
-	n_events = starts_event.shape[0]
+	starts_event = np.where(np.diff(bool_mask) == 1)[0]  # index of where the event is starting
+	ends_event = np.where(np.diff(bool_mask) == -1)[0]  # index of where the event is ending
+	n_events = starts_event.shape[0]  # number of events
+
 	all_events = []
 
-	for f in range(n_events):
-		curr_event_idx = np.zeros(gaze.shape[0])
-		curr_event_idx[starts_event[f]:ends_event[f]] = 1
+	for f in range(n_events): # for every identified event
+		curr_event_idx = np.zeros(gaze.shape[0]) # zeros array with size number of coordinates of the scanpath
+		curr_event_idx[starts_event[f]:ends_event[f]] = 1  # the corresponding ts are set to 1
 		curr_event_idx = curr_event_idx.astype(bool)
-		if np.sum(curr_event_idx) < 4:
+		if np.sum(curr_event_idx) < 4: # if at least 4 seconds of event are identified 
 			continue
-		all_events.append(gaze[curr_event_idx,:])
-
+		all_events.append(gaze[curr_event_idx,:]) # to all events are added the coordinates of the points for each event
+		
 	return all_events
 
 def prepare_events(events, type_ev):
