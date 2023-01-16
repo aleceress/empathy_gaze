@@ -368,8 +368,8 @@ def load_subject_data(participant_recording_name: str) -> dict:
 
     Returns
     -------
-    list
-        NxMx2 list, N being the number of subjects and M the number of trials. 
+    np.array
+        NxMx2 array, N being the number of subjects and M the number of trials. 
         Each trial contains the coordinates of its scanpath.
     """
 
@@ -427,20 +427,14 @@ def load_subject_data(participant_recording_name: str) -> dict:
 
     participant_data = []
 
-    for _, trial_recording in participant_recording_cleaned.groupby("Recording name"):
-        trial_data = np.array(
-            list(
-                map(
-                    list,
-                    zip(
-                        trial_recording["Gaze point X"], trial_recording["Gaze point Y"]
-                    ),
-                )
-            )
-        )
+    for recording_name in participant_recording_cleaned["Recording name"].unique():
+        recording_x = participant_recording_cleaned[participant_recording_cleaned["Recording name"] == recording_name]["Gaze point X"].values
+        recording_y = participant_recording_cleaned[participant_recording_cleaned["Recording name"] == recording_name]["Gaze point Y"].values
+        recording_x = np.reshape(recording_x, (recording_x.shape[0], 1))
+        recording_y = np.reshape(recording_y, (recording_y.shape[0], 1))
+        participant_data.append(np.concatenate((recording_x, recording_y), 1))
 
-        participant_data.append(trial_data)
-    return participant_data
+    return np.asarray(participant_data)
 
 
 def load_eyeT() -> list:
