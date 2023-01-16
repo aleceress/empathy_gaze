@@ -365,7 +365,7 @@ def get_all_features(data, parallel=False):
             )
 
 
-def load_subject_data(participant_recording_name: str) -> dict:
+def load_subject_data(participant_recording_name: str) -> np.array:
     """Gets the scanpath of a single participant
 
     Returns
