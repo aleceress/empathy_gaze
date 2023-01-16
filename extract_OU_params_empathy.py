@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from multiprocessing import Pool, cpu_count
 from my_utils.saver import save_event_features
+from my_utils.loader import clean_eyeT_data
 from my_utils.gaze import (
     split_events,
     pixels2angles,
@@ -18,6 +19,7 @@ from scipy.stats import iqr
 import nslr_hmm
 import scipy.io as sio
 import os
+from os.path import exists
 from tqdm import tqdm
 
 lib = "pymc"
@@ -373,60 +375,18 @@ def load_subject_data(participant_recording_name: str) -> dict:
         Each trial contains the coordinates of its scanpath.
     """
 
-    participant_recording_data = pd.read_csv(
-        DATASET_PATH + "/raw_participant/" + participant_recording_name,
-        sep="\t",
-        low_memory=False,
-    )[
-        [
-            "Computer timestamp",
-            "Recording duration",
-            "Gaze point X",
-            "Gaze point Y",
-            "Pupil diameter left",
-            "Pupil diameter right",
-            "Validity left",
-            "Validity right",
-            "Presented Stimulus name",
-            "Presented Media name",
-            "Presented Media width",
-            "Presented Media height",
-            "Eye movement type",
-            "Recording name",
-            "Recording resolution height",
-            "Recording resolution width",
-        ]
-    ]
-
-    participant_recording_cleaned = participant_recording_data.copy()
-
-    participant_recording_cleaned = participant_recording_cleaned[
-        (participant_recording_cleaned["Validity left"] == "Valid")
-        & (participant_recording_cleaned["Validity right"] == "Valid")
-        & (participant_recording_cleaned["Presented Stimulus name"].notna())
-        & (
-            participant_recording_cleaned["Presented Stimulus name"]
-            != "Eyetracker Calibration"
+    if exists(DATASET_PATH + "/participant_cleaned/" + participant_recording_name):
+        participant_recording_cleaned = pd.read_csv(DATASET_PATH + "/participant_cleaned/" + participant_recording_name)
+    else: 
+        participant_recording = pd.read_csv(
+            DATASET_PATH + "/raw_participant/" + participant_recording_name,
+            sep="\t",
+            low_memory=False,
         )
-    ]
 
-    group1 = ["thumbnail_grossTrial (1)", "thumbnail_grossTrial"]
-
-    group2 = [
-        "Photo3",
-        "babelia 6164137243739591",
-        "Photo3 (1)",
-        "Photo1 (1)",
-        "Photo2 (1)",
-        "Photo2",
-        "Photo1",
-    ]
-
-    participant_recording_cleaned.replace(group1, "grey orange", inplace=True)
-    participant_recording_cleaned.replace(group2, "grey blue", inplace=True)
+        participant_recording_cleaned = clean_eyeT_data(DATASET_PATH, participant_recording_name, participant_recording)
 
     participant_data = []
-
     for recording_name in participant_recording_cleaned["Recording name"].unique():
         recording_x = participant_recording_cleaned[participant_recording_cleaned["Recording name"] == recording_name]["Gaze point X"].values
         recording_y = participant_recording_cleaned[participant_recording_cleaned["Recording name"] == recording_name]["Gaze point Y"].values
@@ -447,7 +407,7 @@ def load_eyeT() -> list:
     """
     all_data = []
     print("Extracting participants data...")
-    for participant_recording in tqdm(os.listdir(DATASET_PATH + "/raw_participant")):
+    for participant_recording in os.listdir(DATASET_PATH + "/raw_participant"):
         participant_nr = int(participant_recording.split(".")[0][-4:])
         if (
             participant_nr % 2 == 0

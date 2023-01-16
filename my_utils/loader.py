@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.io as sio
 from os.path import join
+import os
 from os import listdir, remove
 from zipfile import ZipFile
 import pandas as pd
@@ -269,7 +270,91 @@ def load_trial(dataset_name, path, sub, trial):
     else:
         print("Dataset not recognized")
 
+
+def clean_eyeT_data(path, participant_recording_name, participant_data: pd.DataFrame):
+    participant_recording_cleaned = participant_data.copy()
+    participant_recording_cleaned = participant_recording_cleaned[
+        [
+        "Gaze point X",
+        "Gaze point Y",
+        "Pupil diameter left",
+        "Pupil diameter right",
+        "Validity left",
+        "Validity right",
+        "Presented Stimulus name",
+        "Eye movement type",
+        "Recording name",
+        "Recording resolution height",
+        "Recording resolution width"
+        ]
+    ]
+
+    participant_recording_cleaned = participant_recording_cleaned[
+        (participant_recording_cleaned["Validity left"] == "Valid")
+        & (participant_recording_cleaned["Validity right"] == "Valid")
+        & (participant_recording_cleaned["Presented Stimulus name"].notna())
+        & (
+            participant_recording_cleaned["Presented Stimulus name"]
+            != "Eyetracker Calibration"
+        )
+    ]
+
+    group1 = ["thumbnail_grossTrial (1)", "thumbnail_grossTrial"]
+
+    group2 = [
+        "Photo3",
+        "babelia 6164137243739591",
+        "Photo3 (1)",
+        "Photo1 (1)",
+        "Photo2 (1)",
+        "Photo2",
+        "Photo1",
+    ]
+
+    participant_recording_cleaned.replace(group1, "grey orange", inplace=True)
+    participant_recording_cleaned.replace(group2, "grey blue", inplace=True)
+
+    if not os.path.isdir(path + "/participant_cleaned/"):
+        os.mkdir(path + "/participant_cleaned/")
+    participant_recording_cleaned.to_csv(path + "/participant_cleaned/" + participant_recording_name)
+    return participant_recording_cleaned
+
+
+
+def load_eyeT_subject_data(path, participant_recording_name: str) -> dict:
+    participant_recording_cleaned = clean_eyeT_data(pd.read_csv(
+        path + "/raw_participant/" + participant_recording_name,
+        sep="\t",
+        low_memory=False,
+    ))
+
+    participant_data = []
+
+    for recording_name in participant_recording_cleaned["Recording name"].unique():
+        recording_x = participant_recording_cleaned[participant_recording_cleaned["Recording name"] == recording_name]["Gaze point X"].values
+        recording_y = participant_recording_cleaned[participant_recording_cleaned["Recording name"] == recording_name]["Gaze point Y"].values
+        recording_x = np.reshape(recording_x, (recording_x.shape[0], 1))
+        recording_y = np.reshape(recording_y, (recording_y.shape[0], 1))
+        participant_data.append(np.concatenate((recording_x, recording_y), 1))
+
+
+    return np.asarray(participant_data)
+
+
+def load_eyeT(path : str) -> np.array:
+    all_data = []
+    print("Extracting participants data...")
+    for participant_recording in os.listdir(path + "/raw_participant"):
+        participant_nr = int(participant_recording.split(".")[0][-4:])
+        if (
+            participant_nr % 2 == 0
+        ):  # participant with an even number performed the free-viewing task
+            participant_data = load_eyeT_subject_data(path, participant_recording)
+            all_data.append(participant_data)
+    return all_data
+
 if __name__ == '__main__':
     data_cerf = load_cerf('../datasets/CerfDataset')
     data_coutrot = load_coutrot('../datasets/LondonMuseum_Ext')
     data_gazebase = load_gazebase('../datasets/GazeBase_v2_0')
+    data_eyeT = load_eyeT("../datasets/EyeT")
