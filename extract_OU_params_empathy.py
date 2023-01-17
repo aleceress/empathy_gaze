@@ -52,47 +52,6 @@ def sde(xt, B, U, SIGMA):
     return res.T, SIGMA
 
 
-data_np = np.random.randn(10, 2)  # 10x2 data sampled from Gaussian
-data_th = theano.shared(data_np)
-
-
-with pm.Model() as model:
-    print("\n\tBuilding Model...")
-
-    # LKJ Prior over the "covariance matrix" Beta
-    packed_LB = pm.LKJCholeskyCov(
-        "packed_LB", n=2, eta=2, sd_dist=pm.HalfCauchy.dist(2.5)
-    )  # n: dimension, eta: shape (in this case more weight on matrices with few correlations), sd_dist: distribution for std (in this case smooth)
-    LB = pm.expand_packed_triangular(
-        2, packed_LB
-    )  # convert a packed triangular matrix into a two dimensional array
-    B = pm.Deterministic("B", LB.dot(LB.T))
-
-    U = np.zeros(2)  # prior assumed "attractor"
-
-    # LKJ Prior over the "covariance matrix" Gamma
-    packed_LS = pm.LKJCholeskyCov(
-        "packed_LS", n=2, eta=2, sd_dist=pm.HalfCauchy.dist(2.5)
-    )
-    LS = pm.expand_packed_triangular(2, packed_LS)
-    SIGMA = pm.Deterministic("SIGMA", LS.dot(LS.T))
-
-    # Multi-variate Euler Maruyama (stochastic equation)
-    X = Mv_EulerMaruyama(
-        "X",
-        1 / fs,  # dt
-        sde,  # returns B*(U- x(t)) and Sigma when called over parameters
-        (
-            B,
-            U,
-            SIGMA,
-        ),
-        shape=(data_th.shape.eval()),
-        testval=data_th,
-        observed=data_th,
-    )
-
-
 def extract_features_sub(sub_data, sub, parameters, lib, method, dset):
     """
     Extract and save the features of sub-th subject
@@ -103,22 +62,57 @@ def extract_features_sub(sub_data, sub, parameters, lib, method, dset):
     :param method: maximum a posteriori estimation or stochastic variational inference
     :return: None
     """
-    print("\nSubject number", sub)
-    all_features = (
-        []
-    )  # all features of a single subject. An array in which each element is a dictionary that represents the features of each trial (avg features for fix and sac, the traces of fixations and the parameters)
+    # data_th = theano.tensor.matrix
+    # data_th = tuple((list(i) for i in np.random.randn(10,2)))
+    data_th = np.random.randn(10, 2) # 10x2 data sampled from Gaussian
+    # data_th = theano.shared(data_np)
+    # data_th = theano.tensor.vector(data_np)
+
+    with pm.Model() as model:
+        print("\n\tBuilding Model...")
+        # LKJ Prior over the "covariance matrix" Beta
+        packed_LB = pm.LKJCholeskyCov(
+            "packed_LB", n=2, eta=2, sd_dist=pm.HalfCauchy.dist(2.5)
+        )  # n: dimension, eta: shape (in this case more weight on matrices with few correlations), sd_dist: distribution for std (in this case smooth)
+        LB = pm.expand_packed_triangular(
+            2, packed_LB
+        )  # convert a packed triangular matrix into a two dimensional array
+        B = pm.Deterministic("B", LB.dot(LB.T))
+
+        U = np.zeros(2)  # prior assumed "attractor"
+
+        # LKJ Prior over the "covariance matrix" Gamma
+        packed_LS = pm.LKJCholeskyCov(
+            "packed_LS", n=2, eta=2, sd_dist=pm.HalfCauchy.dist(2.5)
+        )
+        LS = pm.expand_packed_triangular(2, packed_LS)
+        SIGMA = pm.Deterministic("SIGMA", LS.dot(LS.T))
+
+        # Multi-variate Euler Maruyama (stochastic equation)
+        X = Mv_EulerMaruyama(
+            "X",
+            1 / fs,  # dt
+            sde,  # returns B*(U- x(t)) and Sigma when called over parameters
+            (
+                B,
+                U,
+                SIGMA,
+            ),
+            shape=(data_th.shape),
+            testval=data_th,
+            observed=data_th,
+        )
+
+    print("\nSubject number", sub + 1)
+    all_features = [] # all features of a single subject. An array in which each element is a dictionary that represents the features of each trial (avg features for fix and sac, the traces of fixations and the parameters)
 
     # Dividing data in sessions
     for session, gaze_data in enumerate(sub_data):
         print("\n\tSession number", session + 1, "/", len(sub_data))
 
         n_samples = gaze_data.shape[0]
-        dur = (
-            n_samples / fs
-        )  # n_samples/avg samples in one sec = length (in time) of the signal
-        t = np.linspace(
-            0.0, dur, n_samples
-        )  # evenly spaced numbers over the length of the signal
+        dur = n_samples / fs #n_samples/avg samples in one sec = length (in time) of the signal
+        t = np.linspace(0.0, dur, n_samples) #evenly spaced numbers over the length of the signal
         gaze_data_ang = pixels2angles(
             gaze_data,
             parameters["distance"],
@@ -130,22 +124,18 @@ def extract_features_sub(sub_data, sub, parameters, lib, method, dset):
         print("\nStarting NSLR Classification...")
         sample_class, segmentation, seg_class = nslr_hmm.classify_gaze(t, gaze_data_ang)
         print("...done. Starting CBW Estimation!")
-        fixations = (
-            sample_class == nslr_hmm.FIXATION
-        )  # creating a boolean vector which is 1 when the event at time t is a fixation
+        fixations = sample_class == nslr_hmm.FIXATION # creating a boolean vector which is 1 when the event at time t is a fixation
         sp = sample_class == nslr_hmm.SMOOTH_PURSUIT
         saccades = sample_class == nslr_hmm.SACCADE
         pso = sample_class == nslr_hmm.PSO
         fix = np.logical_or(fixations, sp).astype(
             bool
         )  # merge fixations and smooth pursuits as fixations
-        sac = np.logical_or(saccades, pso).astype(
-            bool
-        )  # merge saccades and post saccadic oscillations as saccades
+        sac = np.logical_or(saccades, pso).astype(bool)  # merge saccades and post saccadic oscillations as saccades
 
-        all_fix = split_events(gaze_data, fix)  # coordinates for each fixation event
-        all_sac = split_events(gaze_data, sac)  # coordinates for each saccade event
-
+        all_fix = split_events(gaze_data, fix) # coordinates for each fixation event
+        all_sac = split_events(gaze_data, sac) # coordinates for each saccade event
+        
         # TO UNDERSTAND from here
         print("\tStarting CBW Estimation!")
 
@@ -153,33 +143,24 @@ def extract_features_sub(sub_data, sub, parameters, lib, method, dset):
         traces_fix = []
         traces_sac = []
 
-        feature_fix = []  # all fixation subject features
+        feature_fix = [] # all fixation subject features
         for fi, curr_fix in enumerate(all_fix):
             print("\tProcessing Fixation " + str(fi + 1) + " of " + str(len(all_fix)))
             try:
-                fdur = get_xy_features(curr_fix, fs, "fix")  # duration of the fixation
+                fdur = get_xy_features(curr_fix, fs, "fix") # duration of the fixation
 
                 with model:
                     # Switch out the observed dataset
-                    data_th.set_value(curr_fix)  # setting the fixations as observations
-                    approx = pm.fit(
-                        n=20000, method=pm.ADVI()
-                    )  # approximate the posterior for that fixation
-                    trace_fix = approx.sample(
-                        draws=10000
-                    )  # sampling from the posterior
-                    B_fix = trace_fix["B"].mean(
-                        axis=0
-                    )  # setting as B for that fixation the mean of the samples' B
-                    Sigma_fix = trace_fix["SIGMA"].mean(
-                        axis=0
-                    )  # setting as Sigma for that fixation the mean of the samples' Sigma
-                    B_fix_sd = iqr(trace_fix["B"], axis=0)  # sd of the sampled B
-                    Sigma_fix_sd = iqr(
-                        trace_fix["SIGMA"], axis=0
-                    )  # sd of the sampled Sigma
+                    data_th = curr_fix # setting the fixations as observations
+                    approx = pm.fit(n=20000, method=pm.ADVI(), progressbar = False, score=False) # approximate the posterior for that fixation
+                    trace_fix = approx.sample(draws=10000) # sampling from the posterior
+                    B_fix = trace_fix["B"].mean(axis=0) # setting as B for that fixation the mean of the samples' B
+                    Sigma_fix = trace_fix["SIGMA"].mean(axis=0) # setting as Sigma for that fixation the mean of the samples' Sigma
+                    B_fix_sd = iqr(trace_fix["B"], axis=0) # sd of the sampled B
+                    Sigma_fix_sd = iqr(trace_fix["SIGMA"], axis=0) # sd of the sampled Sigma
 
-            except:
+            except Exception as e:
+                print(str(e))
                 print(
                     "\tSomething went wrong with feature extraction... Skipping fixation"
                 )
@@ -200,18 +181,16 @@ def extract_features_sub(sub_data, sub, parameters, lib, method, dset):
                     Sigma_fix_sd[1, 1],
                     fdur,
                 ]
-            )  # current fixation features
+            ) # current fixation features 
 
-            feature_fix.append(curr_f_fix)  # appending to the fixation features
+            feature_fix.append(curr_f_fix) # appending to the fixation features
 
-            tf = (
-                {}
-            )  # dictionary containing all fixations sampled for B and S for this fixation
-            tf["B"] = trace_fix["B"]  # all sampled data for B for this fixation
-            tf["S"] = trace_fix["SIGMA"]  # all sampled data for Sigma for this fixation
+            tf = {} # dictionary containing all fixations sampled for B and S for this fixation
+            tf["B"] = trace_fix["B"] # all sampled data for B for this fixation
+            tf["S"] = trace_fix["SIGMA"] # all sampled data for Sigma for this fixation
             traces_fix.append(tf)
 
-        features_fix = np.vstack(feature_fix)  # stacks the fixation features vertically
+        features_fix = np.vstack(feature_fix) # stacks the fixation features vertically
 
         # does the same for saccades
         feature_sac = []
@@ -223,13 +202,13 @@ def extract_features_sub(sub_data, sub, parameters, lib, method, dset):
                 angle, ampl, sdur = get_xy_features(curr_sac, fs, "sac")
                 with model:
                     # Switch out the observed dataset
-                    data_th.set_value(curr_sac)
+                    data_th.set_value(curr_sac) 
                     approx = pm.fit(n=20000, method=pm.ADVI())
-                    trace_sac = approx.sample(draws=10000)
-                    B_sac = trace_sac["B"].mean(axis=0)
-                    Sigma_sac = trace_sac["SIGMA"].mean(axis=0)
-                    B_sac_sd = iqr(trace_sac["B"], axis=0)
-                    Sigma_sac_sd = iqr(trace_sac["SIGMA"], axis=0)
+                    trace_sac = approx.sample(draws=10000) 
+                    B_sac = trace_sac["B"].mean(axis=0) 
+                    Sigma_sac = trace_sac["SIGMA"].mean(axis=0) 
+                    B_sac_sd = iqr(trace_sac["B"], axis=0) 
+                    Sigma_sac_sd = iqr(trace_sac["SIGMA"], axis=0) 
 
             except:
                 print(
@@ -261,18 +240,18 @@ def extract_features_sub(sub_data, sub, parameters, lib, method, dset):
             tf["S"] = trace_sac["SIGMA"]
             traces_sac.append(tf)
 
-        features_sac = np.vstack(feature_sac)  # one for each saccade
+        features_sac = np.vstack(feature_sac) #one for each saccade
 
         features["label"] = float(sub)
         features["stimulus"] = session
-        features["feat_fix"] = features_fix
+        features["feat_fix"] = features_fix 
         features["sacc_fix"] = features_sac
         features["traces_fix"] = traces_fix
         features["traces_sac"] = traces_fix
 
-        all_features.append(features)  # one for each trial
+        all_features.append(features) #one for each trial
 
-    save_event_features(
+    save_event_features (
         all_features,
         DATASET_NAME,
         "event_features_" + str(sub),
@@ -282,7 +261,6 @@ def extract_features_sub(sub_data, sub, parameters, lib, method, dset):
     )
 
     return "Features saved for subject number " + str(sub + 1)
-
 
 def get_subject_parameters(sub):
     return {
@@ -303,8 +281,8 @@ def get_all_features(data, parallel=False):
     """
 
     if parallel:
-        n_processes = min(cpu_count(), len(data))
-        print("The computation will be parallelized in ", n_processes, " processes")
+        # n_processes = min(cpu_count(), len(data))
+        n_processes = 8
 
         with Pool(n_processes) as p:
             multiple_results = [
@@ -357,7 +335,7 @@ def get_all_features(data, parallel=False):
             )
             extract_features_sub(
                 sub_data[n_train:],
-                sub,
+                sub_nr,
                 get_subject_parameters(sub_nr),
                 lib,
                 method,
@@ -365,13 +343,13 @@ def get_all_features(data, parallel=False):
             )
 
 
-def load_subject_data(participant_recording_name: str) -> np.array:
+def load_subject_data(participant_recording_name: str) -> dict:
     """Gets the scanpath of a single participant
 
     Returns
     -------
-    np.array
-        NxMx2 array, N being the number of subjects and M the number of trials. 
+    list
+        NxMx2 list, N being the number of subjects and M the number of trials. 
         Each trial contains the coordinates of its scanpath.
     """
 
