@@ -150,6 +150,7 @@ def extract_features_sub(sub_data, sub, parameters, lib, method, dset):
                 print(
                     "\tSomething went wrong with feature extraction... Skipping fixation"
                 )
+                continue
 
             curr_f_fix = np.array(
                 [
@@ -200,6 +201,7 @@ def extract_features_sub(sub_data, sub, parameters, lib, method, dset):
                 print(
                     "\tSomething went wrong with feature extraction... Skipping saccade"
                 )
+                continue
 
             curr_f_sac = np.array(
                 [

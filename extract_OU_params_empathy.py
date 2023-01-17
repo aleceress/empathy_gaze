@@ -145,7 +145,7 @@ def extract_features_sub(sub_data, sub, parameters, lib, method, dset):
 
         feature_fix = [] # all fixation subject features
         for fi, curr_fix in enumerate(all_fix):
-            print("\tProcessing Fixation " + str(fi + 1) + " of " + str(len(all_fix)))
+            print("\tProcessing Fixation " + str(fi + 1) + " of " + str(len(all_fix)) + " for subject "+ str(sub))
             try:
                 fdur = get_xy_features(curr_fix, fs, "fix") # duration of the fixation
 
