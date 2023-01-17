@@ -62,11 +62,8 @@ def extract_features_sub(sub_data, sub, parameters, lib, method, dset):
     :param method: maximum a posteriori estimation or stochastic variational inference
     :return: None
     """
-    # data_th = theano.tensor.matrix
-    # data_th = tuple((list(i) for i in np.random.randn(10,2)))
+
     data_th = np.random.randn(10, 2) # 10x2 data sampled from Gaussian
-    # data_th = theano.shared(data_np)
-    # data_th = theano.tensor.vector(data_np)
 
     with pm.Model() as model:
         print("\n\tBuilding Model...")
