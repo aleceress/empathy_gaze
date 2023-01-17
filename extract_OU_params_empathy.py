@@ -103,7 +103,7 @@ def extract_features_sub(sub_data, sub, parameters, lib, method, dset):
             observed=data_th,
         )
 
-    print("\nSubject number", sub + 1)
+    print("\nSubject number", sub)
     all_features = [] # all features of a single subject. An array in which each element is a dictionary that represents the features of each trial (avg features for fix and sac, the traces of fixations and the parameters)
 
     # Dividing data in sessions
@@ -138,7 +138,7 @@ def extract_features_sub(sub_data, sub, parameters, lib, method, dset):
         
         # TO UNDERSTAND from here
         print("\tStarting CBW Estimation!")
-
+      
         features = {}
         traces_fix = []
         traces_sac = []
@@ -197,23 +197,25 @@ def extract_features_sub(sub_data, sub, parameters, lib, method, dset):
         for si, curr_sac in enumerate(all_sac):
             if len(curr_sac) < 4:
                 continue
-            print("\tProcessing Saccade " + str(si + 1) + " of " + str(len(all_sac)))
+            print("\tProcessing Saccade " + str(si + 1) + " of " + str(len(all_sac)) + " for subject "+ str(sub))
             try:
                 angle, ampl, sdur = get_xy_features(curr_sac, fs, "sac")
                 with model:
                     # Switch out the observed dataset
-                    data_th.set_value(curr_sac) 
-                    approx = pm.fit(n=20000, method=pm.ADVI())
+                    data_th = curr_sac
+                    approx = pm.fit(n=20000, method=pm.ADVI(), progressbar=False, score=False)
                     trace_sac = approx.sample(draws=10000) 
                     B_sac = trace_sac["B"].mean(axis=0) 
                     Sigma_sac = trace_sac["SIGMA"].mean(axis=0) 
                     B_sac_sd = iqr(trace_sac["B"], axis=0) 
                     Sigma_sac_sd = iqr(trace_sac["SIGMA"], axis=0) 
 
-            except:
+            except Exception as e:
+                print(str(e))
                 print(
                     "\tSomething went wrong with feature extraction... Skipping saccade"
                 )
+                continue
 
             curr_f_sac = np.array(
                 [
@@ -260,7 +262,7 @@ def extract_features_sub(sub_data, sub, parameters, lib, method, dset):
         dset=dset,
     )
 
-    return "Features saved for subject number " + str(sub + 1)
+    return "Features saved for subject number " + str(sub)
 
 def get_subject_parameters(sub):
     return {
