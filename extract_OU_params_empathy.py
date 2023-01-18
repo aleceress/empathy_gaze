@@ -2,14 +2,13 @@ import numpy as np
 import pandas as pd
 from multiprocessing import Pool, cpu_count
 from my_utils.saver import save_event_features
-from my_utils.loader import clean_eyeT_data
 from my_utils.gaze import (
     split_events,
     pixels2angles,
     get_fixndur,
     angle_between_first_and_last_points,
 )
-from my_utils.loader import load_dataset
+from my_utils.loader import load_eyeT
 import matplotlib.pyplot as plt
 import pymc3 as pm
 from OrnsteinUhlenbeckPyMC.EU import Mv_EulerMaruyama
@@ -342,58 +341,7 @@ def get_all_features(data, parallel=False):
             )
 
 
-def load_subject_data(participant_recording_name: str) -> dict:
-    """Gets the scanpath of a single participant
-
-    Returns
-    -------
-    list
-        NxMx2 list, N being the number of subjects and M the number of trials. 
-        Each trial contains the coordinates of its scanpath.
-    """
-
-    if exists(DATASET_PATH + "/participant_cleaned/" + participant_recording_name):
-        participant_recording_cleaned = pd.read_csv(DATASET_PATH + "/participant_cleaned/" + participant_recording_name)
-    else: 
-        participant_recording = pd.read_csv(
-            DATASET_PATH + "/raw_participant/" + participant_recording_name,
-            sep="\t",
-            low_memory=False,
-        )
-
-        participant_recording_cleaned = clean_eyeT_data(DATASET_PATH, participant_recording_name, participant_recording)
-
-    participant_data = []
-    for recording_name in participant_recording_cleaned["Recording name"].unique():
-        recording_x = participant_recording_cleaned[participant_recording_cleaned["Recording name"] == recording_name]["Gaze point X"].values
-        recording_y = participant_recording_cleaned[participant_recording_cleaned["Recording name"] == recording_name]["Gaze point Y"].values
-        recording_x = np.reshape(recording_x, (recording_x.shape[0], 1))
-        recording_y = np.reshape(recording_y, (recording_y.shape[0], 1))
-        participant_data.append(np.concatenate((recording_x, recording_y), 1))
-
-    return np.asarray(participant_data)
-
-
-def load_eyeT() -> list:
-    """Gets the EyeT data of participants that performed the free-viewing task
-
-    Returns
-    -------
-    list
-        a list of participant data
-    """
-    all_data = []
-    print("Extracting participants data...")
-    for participant_recording in os.listdir(DATASET_PATH + "/raw_participant"):
-        participant_nr = int(participant_recording.split(".")[0][-4:])
-        if (
-            participant_nr % 2 == 0
-        ):  # participant with an even number performed the free-viewing task
-            participant_data = load_subject_data(participant_recording)
-            all_data.append(participant_data)
-    return all_data
-
-
 if __name__ == "__main__":
-    data = load_eyeT()
-    get_all_features(data, parallel=True)
+    data = load_eyeT(DATASET_PATH)
+    get_all_features(data)
+    # parallel=True)
