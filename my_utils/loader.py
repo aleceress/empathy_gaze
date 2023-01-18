@@ -1,3 +1,4 @@
+# from gaze import dva2pixels
 import numpy as np
 import scipy.io as sio
 from os.path import join
@@ -5,35 +6,36 @@ import os
 from os import listdir, remove
 from zipfile import ZipFile
 import pandas as pd
-from my_utils.gaze import dva2pixels
 
 
 def load_event_features(file):
     features = np.load(file, allow_pickle=True)
-    n_ex = len(features)
+    n_ex = len(features) # number of trials associated with the subject
 
     feat_fixs = []
     feat_sacs = []
     stim_fix = []
     stim_sac = []
 
-    for e in range(n_ex):
+    for e in range(n_ex): # for each trial
         curr_data_dict = features[e]
         try:
-            feat_fix = curr_data_dict["feat_fix"]
-            feat_sac = curr_data_dict["sacc_fix"]
+            feat_fix = curr_data_dict["feat_fix"]  # fixation parameters
+            feat_sac = curr_data_dict["sacc_fix"] # saccades parameters
 
-            feat_fixs.append(feat_fix)
-            feat_sacs.append(feat_sac)
+            feat_fixs.append(feat_fix) # list of trial fixation parameters
+            feat_sacs.append(feat_sac) # list of trial saccade parameters
             stim_fix.append(
                 np.repeat(curr_data_dict["stimulus"], len(feat_fix))[:, np.newaxis]
-            )
+            ) # saving the trial number for the fixations
             stim_sac.append(
                 np.repeat(curr_data_dict["stimulus"], len(feat_sac))[:, np.newaxis]
-            )
+            ) # saving the trial number for the saccades
         except:
             continue
-    feat_fixs = np.vstack(feat_fixs)
+
+    # arrays grouping the features of each trial
+    feat_fixs = np.vstack(feat_fixs) 
     feat_sacs = np.vstack(feat_sacs)
     stim_fix = np.vstack(stim_fix)
     stim_sac = np.vstack(stim_sac)

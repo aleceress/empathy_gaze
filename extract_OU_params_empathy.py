@@ -5,21 +5,14 @@ from my_utils.saver import save_event_features
 from my_utils.gaze import (
     split_events,
     pixels2angles,
-    get_fixndur,
     angle_between_first_and_last_points,
 )
 from my_utils.loader import load_eyeT
-import matplotlib.pyplot as plt
 import pymc3 as pm
 from OrnsteinUhlenbeckPyMC.EU import Mv_EulerMaruyama
-import theano
 import theano.tensor as tt
 from scipy.stats import iqr
 import nslr_hmm
-import scipy.io as sio
-import os
-from os.path import exists
-from tqdm import tqdm
 
 lib = "pymc"
 method = "SVI"
@@ -279,8 +272,7 @@ def get_all_features(data, parallel=False):
     """
 
     if parallel:
-        # n_processes = min(cpu_count(), len(data))
-        n_processes = 8
+        n_processes = min(cpu_count(), len(data))
 
         with Pool(n_processes) as p:
             multiple_results = [
@@ -343,5 +335,4 @@ def get_all_features(data, parallel=False):
 
 if __name__ == "__main__":
     data = load_eyeT(DATASET_PATH)
-    get_all_features(data)
-    # parallel=True)
+    get_all_features(data, parallel=True)

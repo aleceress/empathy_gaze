@@ -100,22 +100,23 @@ def load_dataset(path, nsub=None, num_sessions=None):
     if nsub is not None:
         subs = subs[:nsub]
     subs_considered = 0
-    for file in subs:
+    for file in subs: # for every subject
         if file == '.DS_Store':
             continue
-
+        
+        # arrays grouping the features of each trial
         fix_data, sac_data, stim_fix, stim_sac = load_event_features(join(path, file))
     
         if num_sessions is not None:
             ns = len(np.unique(stim_fix))
             if ns < num_sessions:
                 continue
-        label = int(file.split("_")[2].split(".")[0])        
+        label = int(file.split("_")[2].split(".")[0]) # the subject number     
         curr_label_f = np.ones([fix_data.shape[0], 1]) * label
         curr_label_s = np.ones([sac_data.shape[0], 1]) * label
         fix_data = np.hstack([curr_label_f, stim_fix, fix_data])
         sac_data = np.hstack([curr_label_s, stim_sac, sac_data])
-        global_data_fix.append(fix_data)
+        global_data_fix.append(fix_data) # array of all features of fixations, labeled with the subject number (an array contained in it)
         global_data_sac.append(sac_data)
         subs_considered += 1
     data_fix = np.vstack(global_data_fix)
@@ -227,12 +228,14 @@ feat_type = 'OU'
 model = 'SVM'
 
 print('\n\tCERF Dataset (OU features)...\n')
-train_dir = join(join('features', dataset_name), 'train')
-test_dir = join(join('features', dataset_name), 'test')
-data_fix_train, data_sac_train = load_dataset(train_dir)
+train_dir = join(join('features', dataset_name), 'train') # directory containing the training features
+test_dir = join(join('features', dataset_name), 'test') # directory containing the testing features
+data_fix_train, data_sac_train = load_dataset(train_dir) # arrays of labeled data [[subj, features, stimulus]]
 data_fix_test, data_sac_test = load_dataset(test_dir)
 data_fix = np.vstack([data_fix_train, data_fix_test])
 data_sac = np.vstack([data_sac_train, data_sac_test])
+
+#### 
 
 X_fix = data_fix[:, 2:]
 yf = data_fix[:, 0]
