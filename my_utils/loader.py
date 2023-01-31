@@ -6,6 +6,7 @@ import os
 from os import listdir, remove
 from zipfile import ZipFile
 import pandas as pd
+import re
 
 
 def load_event_features(file):
@@ -20,22 +21,22 @@ def load_event_features(file):
     for e in range(n_ex): # for each trial
         curr_data_dict = features[e]
         try:
-            feat_fix = curr_data_dict["feat_fix"]  # fixation parameters
-            feat_sac = curr_data_dict["sacc_fix"] # saccades parameters
+            feat_fix = curr_data_dict["feat_fix"]  # fixation parameters for that trial
+            feat_sac = curr_data_dict["sacc_fix"] # saccades parameters for that
 
             feat_fixs.append(feat_fix) # list of trial fixation parameters
             feat_sacs.append(feat_sac) # list of trial saccade parameters
             stim_fix.append(
                 np.repeat(curr_data_dict["stimulus"], len(feat_fix))[:, np.newaxis]
-            ) # saving the trial number for the fixations
+            ) # saving the trial number for the fixations in an array of len number of fixations and shape [[s], [s], [s] .. [n]]
             stim_sac.append(
                 np.repeat(curr_data_dict["stimulus"], len(feat_sac))[:, np.newaxis]
-            ) # saving the trial number for the saccades
+            ) # saving the trial number for the saccades like the previous one
         except:
             continue
 
     # arrays grouping the features of each trial
-    feat_fixs = np.vstack(feat_fixs) 
+    feat_fixs = np.vstack(feat_fixs) # stacks all fixation features for each trial in a single array
     feat_sacs = np.vstack(feat_sacs)
     stim_fix = np.vstack(stim_fix)
     stim_sac = np.vstack(stim_sac)
@@ -388,6 +389,9 @@ def clean_eyeT_subject_recording(
         )
     ]
 
+    participant_recording_cleaned["Pupil diameter left"] = participant_recording_cleaned["Pupil diameter left"].apply(lambda x : float(x.replace(",", ".")) if not pd.isnull(x) else x)
+    participant_recording_cleaned["Pupil diameter right"] =  participant_recording_cleaned["Pupil diameter right"].apply(lambda x : float(x.replace(",", ".")) if not pd.isnull(x) else x)
+
     group1 = ["thumbnail_grossTrial (1)", "thumbnail_grossTrial"]
 
     group2 = [
@@ -413,56 +417,35 @@ def clean_eyeT_subject_recording(
 
 def load_eyeT_subject_recording(path: str, participant_nr: int) -> pd.DataFrame:
     if os.path.exists(
-        path + "/participant_cleaned/" + "Participant" + str(participant_nr).zfill(4) + ".tsv"
+        join(path, "participant_cleaned", "Participant" + str(participant_nr).zfill(4) + ".tsv")
     ):
         participant_recording_cleaned = pd.read_csv(
-            path
-            + "/participant_cleaned/"
-            + "Participant"
-            + str(participant_nr).zfill(4)
-            + ".tsv"
+            join(path, "participant_cleaned", "Participant" + str(participant_nr).zfill(4) + ".tsv")
         )
     else:
         participant_recording_cleaned = clean_eyeT_subject_recording(
+            path, 
+            "Participant" + str(participant_nr).zfill(4) + ".tsv",
             pd.read_csv(
-                path
-                + "/raw_participant/"
-                + "Participant"
-                + str(participant_nr).zfill(4) + ".tsv",
+                join(path, "raw_participant", "Participant" + str(participant_nr).zfill(4) + ".tsv"),
                 sep="\t",
                 low_memory=False,
             )
         )
     return participant_recording_cleaned
 
-
-def load_eyeT_subject_scanpath(path: str, participant_nr: int) -> dict:
-    participant_recording = load_eyeT_subject_recording(path, participant_nr)
-    participant_data = []
-    for recording_name in participant_recording["Recording name"].unique():
-        recording_x = participant_recording[
-            participant_recording["Recording name"] == recording_name
-        ]["Gaze point X"].values
-        recording_y = participant_recording[
-            participant_recording["Recording name"] == recording_name
-        ]["Gaze point Y"].values
-        recording_x = np.reshape(recording_x, (recording_x.shape[0], 1))
-        recording_y = np.reshape(recording_y, (recording_y.shape[0], 1))
-        participant_data.append(np.concatenate((recording_x, recording_y), 1))
-    return np.asarray(participant_data)
-
+def sorted_nicely(l):
+    convert = lambda text: int(text) if text.isdigit() else text
+    alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)] 
+    return sorted(l, key = alphanum_key)
 
 def load_eyeT(path: str) -> np.array:
     all_data = []
     print("Extracting participants data...")
-    for participant_recording in os.listdir(path + "/raw_participant"):
+    for participant_recording in sorted_nicely(os.listdir(join(path, "raw_participant"))):
         participant_nr = int(participant_recording.split(".")[0][-4:])
-
-        # participant with an even number performed the free-viewing task
-        if participant_nr % 2 == 0:
-            participant_data = load_eyeT_subject_scanpath(path, participant_nr)
-    
-            all_data.append(participant_data)
+        participant_data = load_eyeT_subject_recording(path, participant_nr)
+        all_data.append(participant_data)
     return all_data
 
 
