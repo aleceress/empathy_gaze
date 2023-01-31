@@ -320,5 +320,5 @@ def get_all_features(data, parallel=False):
 
 if __name__ == "__main__":
     data = load_eyeT(DATASET_PATH)
-    get_all_features(data, parallel=False)
+    get_all_features(data, parallel=True)
 
