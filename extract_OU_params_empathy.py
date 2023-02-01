@@ -43,7 +43,7 @@ def sde(xt, B, U, SIGMA):
     return res.T, SIGMA
 
 
-def extract_features_sub(sub_data, sub, lib, method, dset):
+def extract_features_sub(sub_data, sub, dset):
     """
     Extract and save the features of sub-th subject
     :param sub_data: data of the sub-th subject
@@ -172,15 +172,18 @@ def extract_features_sub(sub_data, sub, lib, method, dset):
             tf["B"] = trace_fix["B"] # all sampled data for B for this fixation
             tf["S"] = trace_fix["SIGMA"] # all sampled data for Sigma for this fixation
             traces_fix.append(tf)
-
-        features_fix = np.vstack(feature_fix) # stacks the fixation features vertically
+        try:
+            features_fix = np.vstack(feature_fix) # stacks the fixation features vertically
+        except ValueError:
+            print("No valid fixations... Skipping trial")
+            continue
 
         # does the same for saccades
         feature_sac = []
         for si, curr_sac in enumerate(all_sac):
             if len(curr_sac) < 4:
                 continue
-            print(f"\tProcessing Saccade {si + 1} + of {len(all_sac)} for subject {sub}")
+            print(f"\tProcessing Saccade {si + 1} of {len(all_sac)} for subject {sub}")
             x_coords = np.reshape(curr_sac["Gaze point X"].values, (curr_sac["Gaze point X"].values.shape[0], 1))
             y_coords = np.reshape(curr_sac["Gaze point Y"].values, (curr_sac["Gaze point Y"].values.shape[0], 1))
             curr_sac_scanpath = np.concatenate((x_coords, y_coords), 1)
@@ -295,7 +298,6 @@ def get_all_features(data, parallel=False):
             _ = [res.get() for res in multiple_results]
 
     else:
-
         for sub, sub_data in enumerate(data):
             sub_nr = sub+1            
             n_train = int(len(sub_data)*0.75)
@@ -320,5 +322,5 @@ def get_all_features(data, parallel=False):
 
 if __name__ == "__main__":
     data = load_eyeT(DATASET_PATH)
-    get_all_features(data, parallel=True)
+    get_all_features(data, parallel=False)
 
