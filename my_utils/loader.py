@@ -404,6 +404,7 @@ def clean_eyeT_subject_recording(
         "Photo1",
     ]
 
+    participant_recording_cleaned["Recording name"] = participant_recording_cleaned["Recording name"].apply(lambda x : int("".join(filter(str.isdigit,x))))
     participant_recording_cleaned.replace(group1, "grey orange", inplace=True)
     participant_recording_cleaned.replace(group2, "grey blue", inplace=True)
 

@@ -261,14 +261,15 @@ def get_all_features(data, parallel=False):
     """
 
     if parallel:
-        n_processes = min(cpu_count(), len(data))
+        #   n_processes = min(cpu_count(), len(data))
+        n_processes = 4
 
         with Pool(n_processes) as p:
             multiple_results = [
                 p.apply_async(
                     extract_features_sub,
                     args=(
-                        sub_data[:int(len(sub_data)*0.75)],
+                        sub_data[sub_data["Recording name"] <= int(len(sub_data["Recording name"].unique())*0.75)],
                         sub+1,
                         "train",
                     ),
@@ -284,7 +285,7 @@ def get_all_features(data, parallel=False):
                 p.apply_async(
                     extract_features_sub,
                     args=(
-                        sub_data[int(len(sub_data)*0.75):],
+                        sub_data[sub_data["Recording name"] > int(len(sub_data["Recording name"].unique())*0.75)],
                         sub+1,
                         "test",
                     ),
@@ -295,22 +296,21 @@ def get_all_features(data, parallel=False):
 
     else:
         for sub, sub_data in enumerate(data):
-            sub_nr = sub+1            
-            n_train = int(len(sub_data)*0.75)
+            sub_nr = sub+1           
+            n_train = int(len(sub_data["Recording name"].unique())*0.75)
 
             if not os.path.exists(join("new_features", "EyeT_OU_posterior_VI", "train", f"event_features{sub_nr:02}.npy")):
                 extract_features_sub(
-                    sub_data[:n_train],
+                    sub_data[sub_data["Recording name"] <= n_train],
                     sub_nr,
                     dset="train",
                 )
             if not os.path.exists(join("new_features", "EyeT_OU_posterior_VI", "test", f"event_features{sub_nr:02}.npy")):
                 extract_features_sub(
-                    sub_data[n_train:],
+                    sub_data[sub_data["Recording_name"] > n_train],
                     sub_nr,
                     dset="test",
                 )
-
 
 if __name__ == "__main__":
     data = load_eyeT(DATASET_PATH)
