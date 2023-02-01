@@ -270,8 +270,6 @@ def get_all_features(data, parallel=False):
                     args=(
                         sub_data[:int(len(sub_data)*0.75)],
                         sub+1,
-                        lib,
-                        method,
                         "train",
                     ),
                 )
@@ -288,8 +286,6 @@ def get_all_features(data, parallel=False):
                     args=(
                         sub_data[int(len(sub_data)*0.75):],
                         sub+1,
-                        lib,
-                        method,
                         "test",
                     ),
                 )
@@ -306,16 +302,12 @@ def get_all_features(data, parallel=False):
                 extract_features_sub(
                     sub_data[:n_train],
                     sub_nr,
-                    lib,                  
-                    method,
                     dset="train",
                 )
             if not os.path.exists(join("new_features", "EyeT_OU_posterior_VI", "test", f"event_features{sub_nr:02}.npy")):
                 extract_features_sub(
                     sub_data[n_train:],
                     sub_nr,
-                    lib,
-                    method,
                     dset="test",
                 )
 
