@@ -28,13 +28,15 @@ if __name__ == "__main__":
 
     print("Train data")
     for filename in tqdm(os.listdir(TRAIN_PATH)):
-        with open(f"output/aggregated_features/train/{filename.split('.')[0]}_agg.pickle", "wb") as f:
-            pickle.dump([i for i in loader.load_event_features(f"{TRAIN_PATH}/{filename}")], f)
+        if not os.path.isfile(f"output/aggregated_features/train/{filename.split('.')[0]}_agg.pickle"):
+            with open(f"output/aggregated_features/train/{filename.split('.')[0]}_agg.pickle", "wb") as f:
+                pickle.dump([i for i in loader.load_event_features(f"{TRAIN_PATH}/{filename}")], f)
 
     print("Test data")
     for filename in tqdm(os.listdir(TEST_PATH)):
-        with open(f"output/aggregated_features/test/{filename.split('.')[0]}_agg.pickle", "wb") as f:
-            pickle.dump([i for i in loader.load_event_features(f"{TEST_PATH}/{filename}")], f)
+        if not os.path.isfile(f"output/aggregated_features/test/{filename.split('.')[0]}_agg.pickle"):
+            with open(f"output/aggregated_features/test/{filename.split('.')[0]}_agg.pickle", "wb") as f:
+                pickle.dump([i for i in loader.load_event_features(f"{TEST_PATH}/{filename}")], f)
 
     empathy_levels = pd.read_csv("datasets/EyeT/Questionnaire_datasetIA.csv")["Total Score original"]
     free_fix_features_train = pd.DataFrame()
