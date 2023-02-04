@@ -37,21 +37,3 @@ if __name__ == "__main__":
         if not os.path.isfile(f"output/aggregated_features/test/{filename.split('.')[0]}_agg.pickle"):
             with open(f"output/aggregated_features/test/{filename.split('.')[0]}_agg.pickle", "wb") as f:
                 pickle.dump([i for i in loader.load_event_features(f"{TEST_PATH}/{filename}")], f)
-
-    empathy_levels = pd.read_csv("datasets/EyeT/Questionnaire_datasetIA.csv")["Total Score original"]
-    free_fix_features_train = pd.DataFrame()
-    free_sac_features_train = pd.DataFrame()
-    task_fix_features_train = pd.DataFrame()
-    task_sac_features_train = pd.DataFrame()
-
-
-    for filename in os.listdir("output/new_features/train"):
-        sub_nr = int(filename.split("_")[2].split(".")[0])
-        if sub_nr%2 == 0:
-            fix_features, sac_features = get_sub_features(sub_nr, "train")
-            free_fix_features_train = free_fix_features_train.append(fix_features)
-            free_sac_features_train = free_sac_features_train.append(sac_features)
-        else: 
-            fix_features, sac_features = get_sub_features(sub_nr, "train")
-            task_fix_features_train = task_fix_features_train.append(fix_features)
-            task_sac_features_train = task_sac_features_train.append(sac_features)
