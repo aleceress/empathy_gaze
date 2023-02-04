@@ -232,7 +232,11 @@ def extract_features_sub(sub_data, sub, dset):
             tf["S"] = trace_sac["SIGMA"]
             traces_sac.append(tf)
 
-        features_sac = np.vstack(feature_sac) #one for each saccade
+        try: 
+            features_sac = np.vstack(feature_sac) #one for each saccade
+        except ValueError:
+            print("No valid saccades... Skipping trial")
+            continue
 
         features["label"] = float(sub)
         features["stimulus"] = session
