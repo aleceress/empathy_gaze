@@ -36,7 +36,6 @@ if __name__ == "__main__":
         with open(f"output/aggregated_features/test/{filename.split('.')[0]}_agg.pickle", "wb") as f:
             pickle.dump([i for i in loader.load_event_features(f"output/new_features/test/{filename}")], f)
 
-    """
     empathy_levels = pd.read_csv("datasets/EyeT/Questionnaire_datasetIA.csv")["Total Score original"]
     free_fix_features_train = pd.DataFrame()
     free_sac_features_train = pd.DataFrame()
@@ -54,28 +53,3 @@ if __name__ == "__main__":
             fix_features, sac_features = get_sub_features(sub_nr, "train")
             task_fix_features_train = task_fix_features_train.append(fix_features)
             task_sac_features_train = task_sac_features_train.append(sac_features)
-
-    free_fix_features_test = pd.DataFrame()
-    free_sac_features_test = pd.DataFrame()
-    task_fix_features_test = pd.DataFrame()
-    task_sac_features_test = pd.DataFrame()  
-
-    for filename in os.listdir("output/new_features/test"):
-        sub_nr = int(filename.split("_")[2].split(".")[0])
-        if sub_nr%2 == 0:
-            fix_features, sac_features = get_sub_features(sub_nr, "train")
-            free_fix_features_test = free_fix_features_test.append(fix_features)
-            free_sac_features_test = free_sac_features_test.append(sac_features)
-        else: 
-            fix_features, sac_features = get_sub_features(sub_nr, "train")
-            task_fix_features_test = task_fix_features_test.append(fix_features)
-            task_sac_features_test = task_sac_features_test.append(sac_features)
-
-    free_fix_features_train.to_csv(f"output/aggregated_features/free_fix_train_features")
-    free_sac_features_train.to_csv(f"output/aggregated_features/free_sac_train_features")
-    task_fix_features_train.to_csv(f"output/aggregated_features/task_fix_train_features")
-    task_sac_features_train.to_csv(f"output/aggregated_features/task_sac_train_features")
-
-    free_fix_features_test.to_csv(f"output/aggregated_features/free_fix_test_features")
-
-    """
