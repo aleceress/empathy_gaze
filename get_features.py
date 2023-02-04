@@ -22,14 +22,17 @@ if __name__ == "__main__":
     
     if not os.path.isdir("output/aggregated_features/test"):
         os.mkdir("output/aggregated_features/test")
+    
+    TRAIN_PATH = "output/new_features/EyeT_OU_posterior_VI/train"
+    TEST_PATH = "output/new_features/EyeT_OU_posterior_VI/test"
 
     print("Train data")
-    for filename in tqdm(os.listdir("output/new_features/train")):
+    for filename in tqdm(os.listdir(TRAIN_PATH)):
         with open(f"output/aggregated_features/train/{filename.split('.')[0]}_agg.pickle", "wb") as f:
-            pickle.dump([i for i in loader.load_event_features(f"output/new_features/train/{filename}")], f)
+            pickle.dump([i for i in loader.load_event_features(f"{TRAIN_PATH}/{filename}")], f)
 
     print("Test data")
-    for filename in tqdm(os.listdir("output/new_features/test")):
+    for filename in tqdm(os.listdir(TEST_PATH)):
         with open(f"output/aggregated_features/test/{filename.split('.')[0]}_agg.pickle", "wb") as f:
             pickle.dump([i for i in loader.load_event_features(f"output/new_features/test/{filename}")], f)
 
