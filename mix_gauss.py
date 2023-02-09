@@ -44,7 +44,7 @@ with pm.Model() as free_fix_empathy:
 
     likelihood = pm.NormalMixture('likelihood', weights, μ,  σ, observed=y, shape=X.eval().shape[0])
 
-    free_fix_empathy_trace = pm.sample(cores = cpu_count)
+    free_fix_empathy_trace = pm.sample(cores = cpu_count())
 
 with open("models/free_fix_gaussian_mixture", 'wb') as buff:
     pickle.dump({'model': free_fix_empathy, 'trace': free_fix_empathy_trace}, buff)
