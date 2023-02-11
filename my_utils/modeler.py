@@ -12,13 +12,20 @@ def get_sub_features(features_path, sub_nr, empathy_levels, dset="test"):
     sac_labels = np.repeat(empathy_levels[sub_nr], len(sac_features))
     return fix_features, fix_labels, sac_features, sac_labels
 
+def get_sub(path, dset, type):
+    assert(type == "free" or type == "task")
+    if type == "free":
+        filenames = [filename for filename in os.listdir(f"{path}/{dset}/") if int(filename.split("_")[2].split(".")[0])%2 == 0]
+    else:
+        filenames = [filename for filename in os.listdir(f"{path}/{dset}/") if int(filename.split("_")[2].split(".")[0])%2 == 1]
+    return filenames
+
 def normalize_features(features):
     features = np.array(features)
     normalized_features = (features - features.min(axis=0))/(features.max(axis=0)-features.min(axis=0))
     return normalized_features
 
-def get_features(path, dset, type):
-    assert(type == "free" or type == "task")
+def get_features_and_labels(path, dset, type):
 
     fix_features_agg = []
     fix_labels_agg = []
@@ -27,10 +34,7 @@ def get_features(path, dset, type):
 
     empathy_levels = pd.read_csv("datasets/EyeT/Questionnaire_datasetIA.csv")["Total Score original"]
 
-    if type == "free":
-        filenames = [filename for filename in os.listdir(f"{path}/{dset}/") if int(filename.split("_")[2].split(".")[0])%2 == 0]
-    else:
-        filenames = [filename for filename in os.listdir(f"{path}/{dset}/") if int(filename.split("_")[2].split(".")[0])%2 == 1]
+    filenames = get_sub(path, dset, type)
 
     for filename in filenames:
         sub_nr = int(filename.split("_")[2].split(".")[0])
@@ -56,11 +60,8 @@ def get_stimuli(path,dset, type):
     fix_stimuli_agg = []
     sac_stimuli_agg = []
 
-    if type == "free":
-        filenames = [filename for filename in os.listdir(f"{path}/{dset}/") if int(filename.split("_")[2].split(".")[0])%2 == 0]
-    else:
-        filenames = [filename for filename in os.listdir(f"{path}/{dset}/") if int(filename.split("_")[2].split(".")[0])%2 == 1]
-
+    filenames = get_sub(path, dset, type)
+    
     for filename in filenames:
         sub_nr = int(filename.split("_")[2].split(".")[0])
         if sub_nr % 2 == 0:
