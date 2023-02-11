@@ -189,6 +189,12 @@ def extract_features_sub(sub_data, sub, dset):
             curr_sac_scanpath = np.concatenate((x_coords, y_coords), 1)
 
             try:
+                pupil_diameter_left = curr_sac["Pupil diameter left"].mean()
+                if pupil_diameter_left is np.nan:
+                    continue
+                pupil_diameter_right = curr_sac["Pupil diameter right"].mean()
+                if pupil_diameter_right is np.nan:
+                    continue
                 angle, ampl, sdur = get_xy_features(curr_sac_scanpath, fs, "sac")
                 with model:
                     # Switch out the observed dataset
@@ -224,6 +230,8 @@ def extract_features_sub(sub_data, sub, dset):
                     angle,
                     ampl,
                     sdur,
+                    pupil_diameter_left,
+                    pupil_diameter_right
                 ]
             )
             feature_sac.append(curr_f_sac)
@@ -265,8 +273,7 @@ def get_all_features(data, parallel=False):
     """
 
     if parallel:
-        #   n_processes = min(cpu_count(), len(data))
-        n_processes = 4
+        n_processes = min(cpu_count(), len(data))
 
         with Pool(n_processes) as p:
             multiple_results = [
@@ -278,7 +285,7 @@ def get_all_features(data, parallel=False):
                         "train",
                     ),
                 )
-                for sub, sub_data in enumerate(data) if not os.path.exists(f"new_features/EyeT_OU_posterior_VI/train/event_features_{sub+1:02}.npy")
+                for sub, sub_data in enumerate(data) if not os.path.exists(f"features/EyeT_OU_posterior_VI/train/event_features_{sub+1:02}.npy")
             ]
             _ = [res.get() for res in multiple_results]
 
@@ -294,7 +301,7 @@ def get_all_features(data, parallel=False):
                         "test",
                     ),
                 )
-                for sub, sub_data in enumerate(data) if not os.path.exists(f"new_features/EyeT_OU_posterior_VI/test/event_features_{sub+1:02}.npy")
+                for sub, sub_data in enumerate(data) if not os.path.exists(f"EyeT_OU_posterior_VI/test/event_features_{sub+1:02}.npy")
             ]
             _ = [res.get() for res in multiple_results]
 
@@ -303,13 +310,13 @@ def get_all_features(data, parallel=False):
             sub_nr = sub+1           
             n_train = int(len(sub_data["Recording name"].unique())*0.75)
 
-            if not os.path.exists(join("new_features", "EyeT_OU_posterior_VI", "train", f"event_features{sub_nr:02}.npy")):
+            if not os.path.exists(join("features", "EyeT_OU_posterior_VI", "train", f"event_features{sub_nr:02}.npy")):
                 extract_features_sub(
                     sub_data[sub_data["Recording name"] <= n_train],
                     sub_nr,
                     dset="train",
                 )
-            if not os.path.exists(join("new_features", "EyeT_OU_posterior_VI", "test", f"event_features{sub_nr:02}.npy")):
+            if not os.path.exists(join("features", "EyeT_OU_posterior_VI", "test", f"event_features{sub_nr:02}.npy")):
                 extract_features_sub(
                     sub_data[sub_data["Recording_name"] > n_train],
                     sub_nr,
