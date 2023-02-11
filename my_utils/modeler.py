@@ -48,6 +48,26 @@ def get_features(path, dset, type):
 
     fix_features_agg = normalize_features(fix_features_agg)
     fix_labels_agg = np.array(fix_labels_agg)
-    sac_features_agg = normalize_features(sac_labels_agg)
+    sac_features_agg = normalize_features(sac_features_agg)
     sac_labels_agg = np.array(sac_labels_agg)
     return fix_features_agg, fix_labels_agg, sac_features_agg, sac_labels_agg
+
+def get_stimuli(path,dset, type):
+    fix_stimuli = []
+    sac_stimuli = []
+
+    if type == "free":
+        filenames = [filename for filename in os.listdir(f"{path}/{dset}/") if int(filename.split("_")[2].split(".")[0])%2 == 0]
+    else:
+        filenames = [filename for filename in os.listdir(f"{path}/{dset}/") if int(filename.split("_")[2].split(".")[0])%2 == 1]
+
+    for filename in os.listdir(filenames):
+        sub_nr = int(filename.split("_")[2].split(".")[0])
+        if sub_nr % 2 == 0:
+            with open(f"{path}/test/event_features_{sub_nr:02}_agg.pickle", "rb") as f:
+                _, _, fix_stimuli, sac_stimuli = pickle.load(f)
+                for stim in fix_stimuli:
+                    fix_stimuli.append((stim[0], sub_nr))
+                for stim in sac_stimuli:
+                    sac_stimuli.append((stim[0], sub_nr))
+    return fix_stimuli, sac_stimuli
