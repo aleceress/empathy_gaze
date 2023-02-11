@@ -184,4 +184,5 @@ datasets/EyeT
 output/
 models/
 
-
+# Configuration files
+config.py
