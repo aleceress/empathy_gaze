@@ -274,7 +274,7 @@ def get_all_features(data, parallel=False):
 
     if parallel:
         n_processes = min(cpu_count(), len(data))
-
+    
         with Pool(n_processes) as p:
             multiple_results = [
                 p.apply_async(
