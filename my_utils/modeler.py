@@ -56,6 +56,6 @@ def generate_logistic_regression_model(model_name, features, labels):
         
         trace = pm.sample(1000, random_seed=0)
         print("Saving model...")
-        with open(model_path, 'wb') as m:
+        with open(f"{model_path}.pickle", 'wb') as m:
             pickle.dump({'model': model, 'trace': trace}, m)
         return model, trace
