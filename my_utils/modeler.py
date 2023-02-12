@@ -7,6 +7,7 @@ from theano import tensor as T
 from operator import itemgetter
 import pymc3 as pm
 from config import *
+import arviz as az
 from os.path import join
 
 
@@ -24,13 +25,27 @@ def combine_predictions(fix_predictions, fix_stimuli, sac_predictions, sac_stimu
     predicted_empathy = dict(pd.DataFrame([fix_predicted_empathy, sac_predicted_empathy]).mean())
     return predicted_empathy
     
+def generate_model_ppc(model, trace):
+    with model:
+        ppc = pm.sample_posterior_predictive(trace)
+    return az.from_pymc3(model=model, posterior_predictive=ppc) 
+
+def generate_model_predictions(model, test_features, trace):
+    with model:
+        pm.set_data({"x": test_features})
+        predictions = generate_model_ppc(model, trace)
+        return predictions["posterior_predictive"]['empathy'].to_numpy().mean(axis=(0,1))
+
+def make_labels_binary(labels, threshold):
+    return [1 if label >= threshold else 0 for label in labels]
+
 def generate_logistic_regression_model(model_name, features, labels):
-    model_path = join(MODELS_PATH, model_name)
+    model_path = join(MODELS_PATH, f"{model_name}.pickle")
     if os.path.exists(model_path):
         with open(model_path, "rb") as m:
             model_data = pickle.load(m)
             return model_data["model"], model_data["trace"]
-            
+
     with pm.Model() as model:
         X = pm.Data("x", features)
         y = pm.Data("y", labels)
@@ -41,6 +56,6 @@ def generate_logistic_regression_model(model_name, features, labels):
         
         trace = pm.sample(1000, random_seed=0)
         print("Saving model...")
-        with open(join(MODELS_PATH, model_name), 'wb') as buff:
-            pickle.dump({'model': model, 'trace': trace}, buff)
+        with open(model_path, 'wb') as m:
+            pickle.dump({'model': model, 'trace': trace}, m)
         return model, trace
