@@ -6,6 +6,7 @@ from itertools import groupby
 from theano import tensor as T
 from operator import itemgetter
 import pymc3 as pm
+from sklearn.metrics import mean_squared_error, mean_absolute_percentage_error
 from config import *
 import arviz as az
 from os.path import join
@@ -54,8 +55,36 @@ def generate_logistic_regression_model(model_name, features, labels):
         logit = T.dot(X, beta.T)
         pm.Bernoulli("empathy", pm.math.sigmoid(logit), observed=y, shape = X.eval().shape[0])
         
-        trace = pm.sample(1000, random_seed=0)
+        trace = pm.sample(1000, tune=3000, random_seed=0)
         print("Saving model...")
-        with open(f"{model_path}.pickle", 'wb') as m:
+        with open(model_path, 'wb') as m:
             pickle.dump({'model': model, 'trace': trace}, m)
         return model, trace
+
+def generate_neg_binomial_regression_model(model_name, features, labels):
+    model_path = join(MODELS_PATH, f"{model_name}.pickle")
+    if os.path.exists(model_path):
+        with open(model_path, "rb") as m:
+            model_data = pickle.load(m)
+            return model_data["model"], model_data["trace"]
+
+    with pm.Model() as model:
+        X = pm.Data("x", features)
+        y = pm.Data("y", labels)
+        a = pm.Normal("a", mu= 0, sigma=100)
+        b = pm.Normal("b", mu=0, sigma=20, shape=X.eval().shape[1])
+
+        alpha = pm.Exponential("alpha", 0.5)
+        λ = pm.math.exp(a + T.dot(X, b.T))
+        pm.NegativeBinomial("empathy", mu=λ, alpha=alpha, observed=y, shape = X.eval().shape[0])
+
+        trace = pm.sample(1000, cores = 1, tune=3000, random_seed=0)
+        print("Saving model...")
+        with open(model_path, 'wb') as m:
+            pickle.dump({'model': model, 'trace': trace}, m)
+        return model, trace
+
+def get_regression_evaluation(true, predictions):
+    rmse =  mean_squared_error(true, predictions, squared= False)
+    mape = mean_absolute_percentage_error(true,predictions)
+    return round(rmse, 2), round(mape*100,2)
