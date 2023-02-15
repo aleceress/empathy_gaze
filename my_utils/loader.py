@@ -477,10 +477,11 @@ def load_eyeT_empathy_levels(experiment=None, type="general"):
             return questionnaires["Total score"]
 
 def load_eyeT_sub_features(sub_nr, empathy_levels, dset="test"):
-    with open(
-        f"{AGG_FEATURES_PATH}/{dset}/event_features_{sub_nr:02}_agg.pickle", "rb"
-    ) as f:
+    sub_path = join(AGG_FEATURES_PATH, dset, f"event_features_{sub_nr:02}_agg.pickle")
+
+    with open(sub_path, "rb") as f:
         fix_features, sac_features, _, _ = pickle.load(f)
+
     fix_labels = np.repeat(empathy_levels[sub_nr], len(fix_features))
     sac_labels = np.repeat(empathy_levels[sub_nr], len(sac_features))
     return fix_features, fix_labels, sac_features, sac_labels
@@ -498,7 +499,7 @@ def normalize_features(features):
     normalized_features = (features - features.min(axis=0))/(features.max(axis=0)-features.min(axis=0))
     return normalized_features
 
-def get_eyeT_features_and_labels(dset, experiment, type="general"):
+def get_eyeT_features_and_labels(dset, experiment, type="general", normalize=True):
 
     fix_features_agg = []
     fix_labels_agg = []
@@ -522,11 +523,10 @@ def get_eyeT_features_and_labels(dset, experiment, type="general"):
         for sac_label in sac_labels:
             sac_labels_agg.append(sac_label)
 
-    fix_features_agg = normalize_features(fix_features_agg)
-    fix_labels_agg = np.array(fix_labels_agg)
-    sac_features_agg = normalize_features(sac_features_agg)
-    sac_labels_agg = np.array(sac_labels_agg)
-    return fix_features_agg, fix_labels_agg, sac_features_agg, sac_labels_agg
+    if normalize:
+        fix_features_agg = normalize_features(fix_features_agg)
+        sac_features_agg = normalize_features(sac_features_agg)
+    return np.array(fix_features_agg), np.array(fix_labels_agg), np.array(sac_features_agg), np.array(sac_labels_agg)
 
 def get_stimuli(dset, experiment):
     fix_stimuli_agg = []
@@ -536,13 +536,12 @@ def get_stimuli(dset, experiment):
 
     for filename in filenames:
         sub_nr = int(filename.split("_")[2].split(".")[0])
-        if sub_nr % 2 == 0:
-            with open(f"{AGG_FEATURES_PATH}/test/event_features_{sub_nr:02}_agg.pickle", "rb") as f:
-                _, _, fix_stimuli, sac_stimuli = pickle.load(f)
-                for stim in fix_stimuli:
-                    fix_stimuli_agg.append((stim[0], sub_nr))
-                for stim in sac_stimuli:
-                    sac_stimuli_agg.append((stim[0], sub_nr))
+        with open(f"{AGG_FEATURES_PATH}/test/event_features_{sub_nr:02}_agg.pickle", "rb") as f:
+            _, _, fix_stimuli, sac_stimuli = pickle.load(f)
+            for stim in fix_stimuli:
+                fix_stimuli_agg.append((stim[0], sub_nr))
+            for stim in sac_stimuli:
+                sac_stimuli_agg.append((stim[0], sub_nr))
     return fix_stimuli_agg, sac_stimuli_agg
 
 if __name__ == "__main__":
