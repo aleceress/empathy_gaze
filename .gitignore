@@ -179,3 +179,10 @@ prova.ipynb
 
 # Datasets 
 datasets/EyeT
+
+# Output features
+output/
+models/
+
+# Configuration files
+config.py

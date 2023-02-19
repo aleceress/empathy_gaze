@@ -6,7 +6,9 @@ import os
 from os import listdir, remove
 from zipfile import ZipFile
 import pandas as pd
-
+import re
+from config import *
+import pickle
 
 def load_event_features(file):
     features = np.load(file, allow_pickle=True)
@@ -20,22 +22,22 @@ def load_event_features(file):
     for e in range(n_ex): # for each trial
         curr_data_dict = features[e]
         try:
-            feat_fix = curr_data_dict["feat_fix"]  # fixation parameters
-            feat_sac = curr_data_dict["sacc_fix"] # saccades parameters
+            feat_fix = curr_data_dict["feat_fix"]  # fixation parameters for that trial
+            feat_sac = curr_data_dict["sacc_fix"] # saccades parameters for that
 
             feat_fixs.append(feat_fix) # list of trial fixation parameters
             feat_sacs.append(feat_sac) # list of trial saccade parameters
             stim_fix.append(
                 np.repeat(curr_data_dict["stimulus"], len(feat_fix))[:, np.newaxis]
-            ) # saving the trial number for the fixations
+            ) # saving the trial number for the fixations in an array of len number of fixations and shape [[s], [s], [s] .. [n]]
             stim_sac.append(
                 np.repeat(curr_data_dict["stimulus"], len(feat_sac))[:, np.newaxis]
-            ) # saving the trial number for the saccades
+            ) # saving the trial number for the saccades like the previous one
         except:
             continue
 
     # arrays grouping the features of each trial
-    feat_fixs = np.vstack(feat_fixs) 
+    feat_fixs = np.vstack(feat_fixs) # stacks all fixation features for each trial in a single array
     feat_sacs = np.vstack(feat_sacs)
     stim_fix = np.vstack(stim_fix)
     stim_sac = np.vstack(stim_sac)
@@ -388,6 +390,9 @@ def clean_eyeT_subject_recording(
         )
     ]
 
+    participant_recording_cleaned["Pupil diameter left"] = participant_recording_cleaned["Pupil diameter left"].apply(lambda x : float(x.replace(",", ".")) if not pd.isnull(x) else x)
+    participant_recording_cleaned["Pupil diameter right"] =  participant_recording_cleaned["Pupil diameter right"].apply(lambda x : float(x.replace(",", ".")) if not pd.isnull(x) else x)
+
     group1 = ["thumbnail_grossTrial (1)", "thumbnail_grossTrial"]
 
     group2 = [
@@ -400,6 +405,7 @@ def clean_eyeT_subject_recording(
         "Photo1",
     ]
 
+    participant_recording_cleaned["Recording name"] = participant_recording_cleaned["Recording name"].apply(lambda x : int("".join(filter(str.isdigit,x))))
     participant_recording_cleaned.replace(group1, "grey orange", inplace=True)
     participant_recording_cleaned.replace(group2, "grey blue", inplace=True)
 
@@ -413,58 +419,130 @@ def clean_eyeT_subject_recording(
 
 def load_eyeT_subject_recording(path: str, participant_nr: int) -> pd.DataFrame:
     if os.path.exists(
-        path + "/participant_cleaned/" + "Participant" + str(participant_nr).zfill(4) + ".tsv"
+        join(path, "participant_cleaned", "Participant" + str(participant_nr).zfill(4) + ".tsv")
     ):
         participant_recording_cleaned = pd.read_csv(
-            path
-            + "/participant_cleaned/"
-            + "Participant"
-            + str(participant_nr).zfill(4)
-            + ".tsv"
+            join(path, "participant_cleaned", "Participant" + str(participant_nr).zfill(4) + ".tsv")
         )
     else:
         participant_recording_cleaned = clean_eyeT_subject_recording(
+            path, 
+            "Participant" + str(participant_nr).zfill(4) + ".tsv",
             pd.read_csv(
-                path
-                + "/raw_participant/"
-                + "Participant"
-                + str(participant_nr).zfill(4) + ".tsv",
+                join(path, "raw_participant", "Participant" + str(participant_nr).zfill(4) + ".tsv"),
                 sep="\t",
                 low_memory=False,
             )
         )
     return participant_recording_cleaned
 
-
-def load_eyeT_subject_scanpath(path: str, participant_nr: int) -> dict:
-    participant_recording = load_eyeT_subject_recording(path, participant_nr)
-    participant_data = []
-    for recording_name in participant_recording["Recording name"].unique():
-        recording_x = participant_recording[
-            participant_recording["Recording name"] == recording_name
-        ]["Gaze point X"].values
-        recording_y = participant_recording[
-            participant_recording["Recording name"] == recording_name
-        ]["Gaze point Y"].values
-        recording_x = np.reshape(recording_x, (recording_x.shape[0], 1))
-        recording_y = np.reshape(recording_y, (recording_y.shape[0], 1))
-        participant_data.append(np.concatenate((recording_x, recording_y), 1))
-    return np.asarray(participant_data)
-
+def sorted_nicely(l):
+    convert = lambda text: int(text) if text.isdigit() else text
+    alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)] 
+    return sorted(l, key = alphanum_key)
 
 def load_eyeT(path: str) -> np.array:
     all_data = []
     print("Extracting participants data...")
-    for participant_recording in os.listdir(path + "/raw_participant"):
+    for participant_recording in sorted_nicely(os.listdir(join(path, "raw_participant"))):
         participant_nr = int(participant_recording.split(".")[0][-4:])
-
-        # participant with an even number performed the free-viewing task
-        if participant_nr % 2 == 0:
-            participant_data = load_eyeT_subject_scanpath(path, participant_nr)
-    
-            all_data.append(participant_data)
+        participant_data = load_eyeT_subject_recording(path, participant_nr)
+        all_data.append(participant_data)
     return all_data
 
+def load_eyeT_empathy_levels(experiment=None, type="general"):
+    assert(experiment ==None or experiment == "free" or experiment =="task")
+    assert(type =="general" or type == "cognitive" or type =="affective")
+
+    questionnaires = pd.read_csv(join(DATASET_PATH, "Questionnaire_datasetIA.csv"))
+    
+    match experiment:
+        case "free":
+            questionnaires = questionnaires[questionnaires.index%2 == 0]
+        case "task":
+            questionnaires = questionnaires[questionnaires.index%2 == 1]
+    
+    match type:
+        case "general":
+            return questionnaires["Total Score original"]
+        case "cognitive":
+            cognitive_empathy_questions = [" Q25", " Q26", " Q24", " Q19", " Q27", " Q20", " Q16", " Q22", " Q15", " Q21", " Q3", " Q6", " Q5", " Q30", " Q4", " Q28", " Q1", " Q31", " Q18"]
+            questionnaires = questionnaires[cognitive_empathy_questions]
+            questionnaires["Total score"] = questionnaires.sum(axis = 1)
+            return questionnaires["Total score"]
+        case "affective":
+            affective_empathy_questions = [" Q13", " Q14", " Q9", " Q8", " Q29", "  Q2", " Q11", " Q17", " Q7", " Q23", " Q10", " Q12"]
+            questionnaires = questionnaires[affective_empathy_questions]
+            questionnaires["Total score"] = questionnaires.sum(axis = 1)
+            return questionnaires["Total score"]
+
+def load_eyeT_sub_features(sub_nr, empathy_levels, dset="test"):
+    sub_path = join(AGG_FEATURES_PATH, dset, f"event_features_{sub_nr:02}_agg.pickle")
+
+    with open(sub_path, "rb") as f:
+        fix_features, sac_features, _, _ = pickle.load(f)
+
+    fix_labels = np.repeat(empathy_levels[sub_nr], len(fix_features))
+    sac_labels = np.repeat(empathy_levels[sub_nr], len(sac_features))
+    return fix_features, fix_labels, sac_features, sac_labels
+
+def get_eyeT_subs(dset, experiment):
+    assert(experiment == "free" or experiment == "task")
+    if experiment == "free":
+        filenames = [filename for filename in os.listdir(f"{AGG_FEATURES_PATH}/{dset}/") if int(filename.split("_")[2].split(".")[0])%2 == 0]
+    else:
+        filenames = [filename for filename in os.listdir(f"{AGG_FEATURES_PATH}/{dset}/") if int(filename.split("_")[2].split(".")[0])%2 == 1]
+    return filenames
+
+def normalize_features(features):
+    features = np.array(features)
+    normalized_features = (features - features.min(axis=0))/(features.max(axis=0)-features.min(axis=0))
+    return normalized_features
+
+def get_eyeT_features_and_labels(dset, experiment, type="general", normalize=True):
+
+    fix_features_agg = []
+    fix_labels_agg = []
+    sac_features_agg = []
+    sac_labels_agg = []
+
+    filenames = get_eyeT_subs(dset, experiment)
+
+    empathy_levels = load_eyeT_empathy_levels(experiment, type)
+
+    for filename in filenames:
+        sub_nr = int(filename.split("_")[2].split(".")[0])
+        fix_features, fix_labels, sac_features, sac_labels = load_eyeT_sub_features(sub_nr, empathy_levels, dset)
+   
+        for fix_feature in fix_features:
+            fix_features_agg.append(fix_feature)
+        for sac_feature in sac_features:
+            sac_features_agg.append(sac_feature)
+        for fix_label in fix_labels:
+            fix_labels_agg.append(fix_label)
+        for sac_label in sac_labels:
+            sac_labels_agg.append(sac_label)
+
+    if normalize:
+        fix_features_agg = normalize_features(fix_features_agg)
+        sac_features_agg = normalize_features(sac_features_agg)
+    return np.array(fix_features_agg), np.array(fix_labels_agg), np.array(sac_features_agg), np.array(sac_labels_agg)
+
+def get_stimuli(dset, experiment):
+    fix_stimuli_agg = []
+    sac_stimuli_agg = []
+
+    filenames = get_eyeT_subs(dset, experiment)
+
+    for filename in filenames:
+        sub_nr = int(filename.split("_")[2].split(".")[0])
+        with open(f"{AGG_FEATURES_PATH}/test/event_features_{sub_nr:02}_agg.pickle", "rb") as f:
+            _, _, fix_stimuli, sac_stimuli = pickle.load(f)
+            for stim in fix_stimuli:
+                fix_stimuli_agg.append((stim[0], sub_nr))
+            for stim in sac_stimuli:
+                sac_stimuli_agg.append((stim[0], sub_nr))
+    return fix_stimuli_agg, sac_stimuli_agg
 
 if __name__ == "__main__":
     data_cerf = load_cerf("../datasets/CerfDataset")
