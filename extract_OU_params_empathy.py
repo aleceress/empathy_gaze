@@ -285,7 +285,7 @@ def get_all_features(data, parallel=False):
                         "train",
                     ),
                 )
-                for sub, sub_data in enumerate(data) if not os.path.exists(f"features/EyeT_OU_posterior_VI/train/event_features_{sub+1:02}.npy")
+                for sub, sub_data in enumerate(data) if not os.path.exists(f"new_features/EyeT_OU_posterior_VI/train/event_features_{sub+1:02}.npy")
             ]
             _ = [res.get() for res in multiple_results]
 
@@ -301,7 +301,7 @@ def get_all_features(data, parallel=False):
                         "test",
                     ),
                 )
-                for sub, sub_data in enumerate(data) if not os.path.exists(f"EyeT_OU_posterior_VI/test/event_features_{sub+1:02}.npy")
+                for sub, sub_data in enumerate(data) if not os.path.exists(f"new_features/EyeT_OU_posterior_VI/test/event_features_{sub+1:02}.npy")
             ]
             _ = [res.get() for res in multiple_results]
 
