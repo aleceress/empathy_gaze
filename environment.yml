@@ -102,6 +102,7 @@ dependencies:
   - zlib=1.2.13=h5eee18b_0
   - zstd=1.5.2=ha4553b6_0
   - seaborn
+  - ipykernel
   - pip:
     - git+https://gitlab.com/nslr/nslr
 prefix: /opt/conda/envs/gazeID
