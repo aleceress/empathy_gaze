@@ -78,7 +78,7 @@ def generate_neg_binomial_regression_model(model_name, features, labels, cores =
         λ = pm.math.exp(a + T.dot(X, b.T))
         pm.NegativeBinomial("empathy", mu=λ, alpha=alpha, observed=y, shape = X.eval().shape[0])
 
-        trace = pm.sample(1000, tune=7000, random_seed=0, cores=cores)
+        trace = pm.sample(1000, tune=7000, random_seed=0, cores=cores, target_accept = 0.9)
         print("Saving model...")
         with open(model_path, 'wb') as m:
             pickle.dump({'model': model, 'trace': trace}, m)
@@ -112,7 +112,7 @@ def generate_mix_gauss_regression_model(model_name, features, labels, cores = 2,
         sd = T.stack([σ1, σ2])
         
         pm.NormalMixture('empathy', π, mu, sd=sd, observed=y, shape=X.eval().shape[0])
-        trace = pm.sample(1000, cores=cores, tune=3000, random_seed=0)
+        trace = pm.sample(1000, cores=cores, tune=3000, random_seed=0, target_accept = 0.9)
         print("Saving model...")
         with open(model_path, 'wb') as m:
             pickle.dump({'model': model, 'trace': trace}, m)
