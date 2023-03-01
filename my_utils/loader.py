@@ -361,7 +361,7 @@ def load_trial(dataset_name, path, sub, trial):
 
 
 def clean_eyeT_subject_recording(
-    path: str, participant_recording_name: str, participant_data: pd.DataFrame
+    participant_recording_name: str, participant_data: pd.DataFrame
 ):
     participant_recording_cleaned = participant_data.copy()
     participant_recording_cleaned = participant_recording_cleaned[
@@ -409,27 +409,26 @@ def clean_eyeT_subject_recording(
     participant_recording_cleaned.replace(group1, "grey orange", inplace=True)
     participant_recording_cleaned.replace(group2, "grey blue", inplace=True)
 
-    if not os.path.isdir(path + "/participant_cleaned/"):
-        os.mkdir(path + "/participant_cleaned/")
+    if not os.path.isdir(join(DATASET_PATH, "participant_cleaned")):
+        os.mkdir(join(DATASET_PATH, "participant_cleaned"))
     participant_recording_cleaned.to_csv(
-        path + "/participant_cleaned/" + participant_recording_name
+        join(DATASET_PATH, "participant_cleaned", participant_recording_name)
     )
     return participant_recording_cleaned
 
 
-def load_eyeT_subject_recording(path: str, participant_nr: int) -> pd.DataFrame:
+def load_eyeT_subject_recording(participant_nr: int) -> pd.DataFrame:
     if os.path.exists(
-        join(path, "participant_cleaned", "Participant" + str(participant_nr).zfill(4) + ".tsv")
+        join(DATASET_PATH, "participant_cleaned", "Participant" + str(participant_nr).zfill(4) + ".tsv")
     ):
         participant_recording_cleaned = pd.read_csv(
-            join(path, "participant_cleaned", "Participant" + str(participant_nr).zfill(4) + ".tsv")
+            join(DATASET_PATH, "participant_cleaned", "Participant" + str(participant_nr).zfill(4) + ".tsv")
         )
     else:
         participant_recording_cleaned = clean_eyeT_subject_recording(
-            path, 
             "Participant" + str(participant_nr).zfill(4) + ".tsv",
             pd.read_csv(
-                join(path, "raw_participant", "Participant" + str(participant_nr).zfill(4) + ".tsv"),
+                join(DATASET_PATH, "raw_participant", "Participant" + str(participant_nr).zfill(4) + ".tsv"),
                 sep="\t",
                 low_memory=False,
             )
@@ -441,43 +440,40 @@ def sorted_nicely(l):
     alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)] 
     return sorted(l, key = alphanum_key)
 
-def load_eyeT(path: str) -> np.array:
+def load_eyeT() -> np.array:
     all_data = []
     print("Extracting participants data...")
-    for participant_recording in sorted_nicely(os.listdir(join(path, "raw_participant"))):
+    for participant_recording in sorted_nicely(os.listdir(join(DATASET_PATH, "raw_participant"))):
         participant_nr = int(participant_recording.split(".")[0][-4:])
-        participant_data = load_eyeT_subject_recording(path, participant_nr)
+        participant_data = load_eyeT_subject_recording(participant_nr)
         all_data.append(participant_data)
     return all_data
 
 def load_eyeT_empathy_levels(experiment=None, type="general"):
     assert(experiment ==None or experiment == "free" or experiment =="task")
     assert(type =="general" or type == "cognitive" or type =="affective")
-
     questionnaires = pd.read_csv(join(DATASET_PATH, "Questionnaire_datasetIA.csv"))
     
-    match experiment:
-        case "free":
-            questionnaires = questionnaires[questionnaires.index%2 == 0]
-        case "task":
-            questionnaires = questionnaires[questionnaires.index%2 == 1]
+    if experiment == "free":
+         questionnaires = questionnaires[questionnaires.index%2 == 0]
+    else:
+        questionnaires = questionnaires[questionnaires.index%2 == 1]
     
-    match type:
-        case "general":
-            return questionnaires["Total Score original"]
-        case "cognitive":
-            cognitive_empathy_questions = [" Q25", " Q26", " Q24", " Q19", " Q27", " Q20", " Q16", " Q22", " Q15", " Q21", " Q3", " Q6", " Q5", " Q30", " Q4", " Q28", " Q1", " Q31", " Q18"]
-            questionnaires = questionnaires[cognitive_empathy_questions]
-            questionnaires["Total score"] = questionnaires.sum(axis = 1)
-            return questionnaires["Total score"]
-        case "affective":
-            affective_empathy_questions = [" Q13", " Q14", " Q9", " Q8", " Q29", "  Q2", " Q11", " Q17", " Q7", " Q23", " Q10", " Q12"]
-            questionnaires = questionnaires[affective_empathy_questions]
-            questionnaires["Total score"] = questionnaires.sum(axis = 1)
-            return questionnaires["Total score"]
+    if type == "general":
+        return questionnaires["Total Score original"]
+    elif type == "cognitive":
+        cognitive_empathy_questions = [" Q25", " Q26", " Q24", " Q19", " Q27", " Q20", " Q16", " Q22", " Q15", " Q21", " Q3", " Q6", " Q5", " Q30", " Q4", " Q28", " Q1", " Q31", " Q18"]
+        questionnaires = questionnaires[cognitive_empathy_questions]
+        questionnaires["Total score"] = questionnaires.sum(axis = 1)
+        return questionnaires["Total score"]
+    else:
+        affective_empathy_questions = [" Q13", " Q14", " Q9", " Q8", " Q29", "  Q2", " Q11", " Q17", " Q7", " Q23", " Q10", " Q12"]
+        questionnaires = questionnaires[affective_empathy_questions]
+        questionnaires["Total score"] = questionnaires.sum(axis = 1)
+        return questionnaires["Total score"]
 
 def load_eyeT_sub_features(sub_nr, empathy_levels, dset="test"):
-    sub_path = join(AGG_FEATURES_PATH, dset, f"event_features_{sub_nr:02}_agg.pickle")
+    sub_path = join(OUTPUT_PATH, "aggregated_features", dset, f"event_features_{sub_nr:02}_agg.pickle")
 
     with open(sub_path, "rb") as f:
         fix_features, sac_features, _, _ = pickle.load(f)
@@ -489,9 +485,9 @@ def load_eyeT_sub_features(sub_nr, empathy_levels, dset="test"):
 def get_eyeT_subs(dset, experiment):
     assert(experiment == "free" or experiment == "task")
     if experiment == "free":
-        filenames = [filename for filename in os.listdir(f"{AGG_FEATURES_PATH}/{dset}/") if int(filename.split("_")[2].split(".")[0])%2 == 0]
+        filenames = [filename for filename in os.listdir(join(OUTPUT_PATH, "aggregated_features", dset)) if int(filename.split("_")[2].split(".")[0])%2 == 0]
     else:
-        filenames = [filename for filename in os.listdir(f"{AGG_FEATURES_PATH}/{dset}/") if int(filename.split("_")[2].split(".")[0])%2 == 1]
+        filenames = [filename for filename in os.listdir(join(OUTPUT_PATH, "aggregated_features", dset)) if int(filename.split("_")[2].split(".")[0])%2 == 1]
     return filenames
 
 def normalize_features(features):
@@ -536,7 +532,7 @@ def get_stimuli(dset, experiment):
 
     for filename in filenames:
         sub_nr = int(filename.split("_")[2].split(".")[0])
-        with open(f"{AGG_FEATURES_PATH}/test/event_features_{sub_nr:02}_agg.pickle", "rb") as f:
+        with open(join(OUTPUT_PATH, "aggregated_features", "test", f"event_features_{sub_nr:02}_agg.pickle"), "rb") as f:
             _, _, fix_stimuli, sac_stimuli = pickle.load(f)
             for stim in fix_stimuli:
                 fix_stimuli_agg.append((stim[0], sub_nr))

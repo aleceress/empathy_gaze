@@ -15,6 +15,7 @@ from os.path import join
 import theano
 import warnings
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
+from config import *
 
 
 lib = "pymc"
@@ -22,8 +23,7 @@ method = "SVI"
 save_trace = False
 
 DATASET_NAME = "EyeT"
-DATASET_PATH = "datasets/EyeT"
-
+FEATURES_PATH = join(OUTPUT_PATH, "features", "EyeT_OU_posterior_VI")
 fs = 120
 
 def get_xy_features(xy, sampleRate, type_event):
@@ -52,7 +52,7 @@ def extract_features_sub(sub_data, sub, dset):
     :param lib: library used for the inference
     :param method: maximum a posteriori estimation or stochastic variational inference
     :return: None
-    """
+    """#one for each trial
     
     data_np = np.random.randn(10, 2) # 10x2 data sampled from Gaussian
     data_th = theano.shared(data_np)
@@ -62,10 +62,10 @@ def extract_features_sub(sub_data, sub, dset):
         # LKJ Prior over the "covariance matrix" Beta
         packed_LB = pm.LKJCholeskyCov(
             "packed_LB", n=2, eta=2, sd_dist=pm.HalfCauchy.dist(2.5)
-        )  # n: dimension, eta: shape (in this case more weight on matrices with few correlations), sd_dist: distribution for std (in this case smooth)
+        ) 
         LB = pm.expand_packed_triangular(
             2, packed_LB
-        )  # convert a packed triangular matrix into a two dimensional array
+        ) 
         B = pm.Deterministic("B", LB.dot(LB.T))
 
         U = np.zeros(2)  # prior assumed "attractor"
@@ -94,7 +94,7 @@ def extract_features_sub(sub_data, sub, dset):
 
 
     print("\nSubject number", sub)
-    all_features = [] # all features of a single subject. An array in which each element is a dictionary that represents the features of each trial (avg features for fix and sac, the traces of fixations and the parameters)
+    all_features = [] 
 
     # Dividing data in sessions
     session_data = [session[1] for session in sub_data.groupby("Recording name")]
@@ -136,8 +136,8 @@ def extract_features_sub(sub_data, sub, dset):
                     trace_fix = approx.sample(draws=10000) # sampling from the posterior
                     B_fix = trace_fix["B"].mean(axis=0) # setting as B for that fixation the mean of the samples' B
                     Sigma_fix = trace_fix["SIGMA"].mean(axis=0) # setting as Sigma for that fixation the mean of the samples' Sigma
-                    B_fix_sd = iqr(trace_fix["B"], axis=0) # sd of the sampled B
-                    Sigma_fix_sd = iqr(trace_fix["SIGMA"], axis=0) # sd of the sampled Sigma
+                    B_fix_sd = iqr(trace_fix["B"], axis=0) 
+                    Sigma_fix_sd = iqr(trace_fix["SIGMA"], axis=0) 
 
             except Exception as e:
                 print(str(e))
@@ -166,14 +166,14 @@ def extract_features_sub(sub_data, sub, dset):
                 ]
             ) # current fixation features 
 
-            feature_fix.append(curr_f_fix) # appending to the fixation features
+            feature_fix.append(curr_f_fix)
 
-            tf = {} # dictionary containing all fixations sampled for B and S for this fixation
-            tf["B"] = trace_fix["B"] # all sampled data for B for this fixation
-            tf["S"] = trace_fix["SIGMA"] # all sampled data for Sigma for this fixation
+            tf = {}
+            tf["B"] = trace_fix["B"] 
+            tf["S"] = trace_fix["SIGMA"] 
             traces_fix.append(tf)
         try:
-            features_fix = np.vstack(feature_fix) # stacks the fixation features vertically
+            features_fix = np.vstack(feature_fix)
         except ValueError:
             print("No valid fixations... Skipping trial")
             continue
@@ -197,7 +197,6 @@ def extract_features_sub(sub_data, sub, dset):
                     continue
                 angle, ampl, sdur = get_xy_features(curr_sac_scanpath, fs, "sac")
                 with model:
-                    # Switch out the observed dataset
                     data_th.set_value(curr_sac_scanpath)
                     approx = pm.fit(n=20000, method=pm.ADVI(), progressbar=False, score=False)
                     trace_sac = approx.sample(draws=10000) 
@@ -241,7 +240,7 @@ def extract_features_sub(sub_data, sub, dset):
             traces_sac.append(tf)
 
         try: 
-            features_sac = np.vstack(feature_sac) #one for each saccade
+            features_sac = np.vstack(feature_sac) 
         except ValueError:
             print("No valid saccades... Skipping trial")
             continue
@@ -253,7 +252,7 @@ def extract_features_sub(sub_data, sub, dset):
         features["traces_fix"] = traces_fix
         features["traces_sac"] = traces_sac
 
-        all_features.append(features) #one for each trial
+        all_features.append(features) 
 
     save_event_features (
         all_features,
@@ -285,7 +284,7 @@ def get_all_features(data, parallel=False):
                         "train",
                     ),
                 )
-                for sub, sub_data in enumerate(data) if not os.path.exists(f"new_features/EyeT_OU_posterior_VI/train/event_features_{sub+1:02}.npy")
+                for sub, sub_data in enumerate(data) if not os.path.exists(join(FEATURES_PATH, "train", f"event_features_{sub+1:02}.npy"))
             ]
             _ = [res.get() for res in multiple_results]
 
@@ -301,7 +300,7 @@ def get_all_features(data, parallel=False):
                         "test",
                     ),
                 )
-                for sub, sub_data in enumerate(data) if not os.path.exists(f"new_features/EyeT_OU_posterior_VI/test/event_features_{sub+1:02}.npy")
+                for sub, sub_data in enumerate(data) if not os.path.exists(join(FEATURES_PATH, "test", f"event_features_{sub+1:02}.npy"))
             ]
             _ = [res.get() for res in multiple_results]
 
@@ -310,20 +309,20 @@ def get_all_features(data, parallel=False):
             sub_nr = sub+1           
             n_train = int(len(sub_data["Recording name"].unique())*0.75)
 
-            if not os.path.exists(join("features", "EyeT_OU_posterior_VI", "train", f"event_features{sub_nr:02}.npy")):
+            if not os.path.exists(join(FEATURES_PATH, "train", f"event_features_{sub_nr:02}.npy")):
                 extract_features_sub(
                     sub_data[sub_data["Recording name"] <= n_train],
                     sub_nr,
                     dset="train",
                 )
-            if not os.path.exists(join("features", "EyeT_OU_posterior_VI", "test", f"event_features{sub_nr:02}.npy")):
+            if not os.path.exists(join(FEATURES_PATH, "test", f"event_features_{sub_nr:02}.npy")):
                 extract_features_sub(
-                    sub_data[sub_data["Recording_name"] > n_train],
+                    sub_data[sub_data["Recording name"] > n_train],
                     sub_nr,
                     dset="test",
                 )
 
 if __name__ == "__main__":
-    data = load_eyeT(DATASET_PATH)
+    data = load_eyeT()
     get_all_features(data, parallel=True)
 

@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.io as sio
 from os.path import join, isdir
+from config import *
 from os import makedirs
 
 def save_OU_features(values, dataset, filename, type='unknown', method='unknown'):
@@ -63,7 +64,6 @@ def save_fix_features(values, dataset, filename, type='unknown', method='unknown
 					'mu_ig': np.reshape(values[:, 7], (fix_len, 1)),
 					'loc_ig': np.reshape(values[:, 8], (fix_len, 1)),
 					'scale_ig': np.reshape(values[:, 9], (fix_len, 1))}
-	# pl.plot_values(fixations_dict)
 	dir_name = 'features/'+dataset+'_'+type+'_'+method
 	if not isdir(dir_name):
 		makedirs(dir_name)
@@ -72,7 +72,7 @@ def save_fix_features(values, dataset, filename, type='unknown', method='unknown
 
 
 def save_event_features(data, dataset, filename, type='unknown', method='unknown', dset='train'):
-	dir_name = 'new_features/'+dataset+'_'+type+'_'+method + '/' + dset
+	dir_name = join(OUTPUT_PATH, "new_features", f"{dataset}_{type}_{method}", dset)
 	if not isdir(dir_name):
 		makedirs(dir_name)
 	np.save(join(dir_name, filename), data)
