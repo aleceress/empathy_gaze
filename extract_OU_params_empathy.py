@@ -1,3 +1,8 @@
+"""
+This script is an adaptation of the code you can find in 
+https://github.com/phuselab/Gaze_4_behavioural_biometrics/blob/master/extract_OU_params.py
+"""
+
 import numpy as np
 import pandas as pd
 from multiprocessing import Pool, cpu_count
