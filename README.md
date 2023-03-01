@@ -18,7 +18,7 @@ conda activate gazeID
 Ornstein-Uhlenbeck features can be extracted from the dataset launching the module `extract_OU_params_empathy.py`. The dataset can be downloaded from [here](https://figshare.com/articles/dataset/Raw_Data/19209714/1) (gaze raw data) ad [here](https://figshare.com/articles/dataset/Questionnaires/19657323/2) (questionnaire data). The dataset folder must be set by adding the path to a `config.py` file, following the example of `config.example.py`. Participants raw data must be placed in a `DATASET_PATH/raw_participants/` folder, while the questionnaires can be directly inserted in `DATASET_PATH/`.
 First part of the script will create a cleaned version of data, which will be saved in `DATASET_PATH/participant_cleaned/` for future usage.
 
-Script results will be saved in `OUTPUT_PATH/features/EyeT_OU_posterior_VI`.
+Script results will be saved in `OUTPUT_PATH/features/EyeT_OU_posterior_VI/`.
 
 The script requires a lot of time and memory to be executed. For this reason, a serialized and smaller version of the features can be already found in this repository under the path `output/aggregated features/`. Those can be derived from the computed features using the script `get_OU_aggregated_features.py`. All classification and regression code can be executed with them.
 
